@@ -12,11 +12,12 @@ var DB *gorm.DB
 
 type User struct {
 	gorm.Model
-	ID          string `gorm:"varchar(20);not null;comment:用户名"`
-	NickName    string `gorm:"varchar(20);not null;comment:昵称"`
-	Mail        string `gorm:"varchar(256);not null;unique;comment:邮箱"`
-	Description string `gorm:"varchar(256);not null;comment:简介"`
-	Password    string `gorm:"size:255;not null;comment:密码"`
+	UserName    string `gorm:"varchar(32);not null;comment:用户名" json:"name"`
+	NickName    string `gorm:"varchar(32);not null;comment:昵称" json:"nickname"`
+	Password    string `gorm:"size:60;not null;comment:密码的哈希" json:"password"`
+	Email       string `gorm:"varchar(256);not null;unique;comment:邮箱" json:"email"`
+	Description string `gorm:"varchar(256);not null;comment:个人简介" json:"description"`
+	Avatar      string `gorm:"varchar(128);not null;comment:头像url" json:"avatar"`
 }
 type DsnConfig struct {
 	Username string
@@ -80,12 +81,15 @@ func TestInit() {
 	fmt.Println("Start TestInit")
 	db := InitDB()
 	s1 := &User{
-		ID:          "itsaiddddd",
+		UserName:    "itsaiddddd",
 		NickName:    "nicknamefadfdasf",
-		Mail:        "tan@163.com.hkj",
+		Email:       "tan@163.com.hkj",
 		Description: "desc test",
 		Password:    "fadsfas",
 	}
 	db.Create(&s1)
 	fmt.Println(s1)
+}
+func Create(db *gorm.DB) {
+
 }
