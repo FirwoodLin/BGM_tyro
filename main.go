@@ -1,8 +1,12 @@
 package main
 
 import (
+	"fmt"
+	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
+	"github.com/FirwoodLin/BGM_tyro/setting"
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"regexp"
@@ -11,6 +15,11 @@ import (
 func main() {
 	//model.DsnConfigRead()
 	//model.TestInit()
+	err := initSettings()
+	if err != nil {
+		fmt.Println("err in initSettings")
+		fmt.Println(err)
+	}
 	db := model.InitDB()
 	//model.DB
 	r := gin.Default()
@@ -40,6 +49,7 @@ func main() {
 			return
 		}
 		// 邮箱校验（唯一，合法）
+		// TODO：检验邮箱唯一
 		reg, _ := regexp.Compile("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")
 		isMatch := reg.MatchString(email)
 		if isMatch == false {
@@ -49,13 +59,15 @@ func main() {
 			})
 			return
 		}
-		isExist := db.Where("email = ?", email).Find(&model.User{})
-		if isExist != nil {
+		//var emailUser model.User
+		if err := db.Where("email = ?", email).Find(&model.User{}).Error; err != nil {
+			fmt.Println(err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"code":    422,
 				"message": "邮箱已经注册",
 			})
 			return
+		} else {
 		}
 		// 简介校验
 		if len(description) > 255 {
@@ -91,12 +103,25 @@ func main() {
 			Avatar:      avatar,
 		}
 		db.Create(&newUser)
+		token, err := auth.GenToken(name, password)
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    5555,
+				"message": "token生成失败",
+				//"token":""
+			})
+			return
+		}
 		c.JSON(http.StatusOK, gin.H{
 			"code":    200,
-			"message": "注册成功"})
+			"message": "注册成功",
+			"token":   token,
+			//"token":""
+		})
 	})
 	// 登录
-	r.POST("signin", func(c *gin.Context) {
+	r.POST("/signin", func(c *gin.Context) {
+		//fmt.Println("in signin")
 		id := c.PostForm("id")
 		password := c.PostForm("password")
 		regMail, _ := regexp.Compile("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")
@@ -104,10 +129,14 @@ func main() {
 		// 检索用户
 		if regMail.MatchString(id) {
 			// id 是邮箱
+			//fmt.Println("mail signin")
 			db.Where("email = ?", id).Find(&retUser)
 		} else {
 			// id 是用户名
+			//fmt.Println("name signin")
+			fmt.Println(id)
 			db.Where("user_name = ?", id).Find(&retUser)
+			fmt.Println(retUser)
 		}
 		// 没有检索到
 		if retUser == (model.User{}) {
@@ -125,13 +154,74 @@ func main() {
 			})
 			return
 		} else {
+			token, err := auth.GenToken(id, password)
+			if err != nil {
+				c.JSON(http.StatusOK, gin.H{
+					"code":    5555,
+					"message": "token生成失败",
+					//"token":""
+				})
+				return
+			}
 			c.JSON(http.StatusOK, gin.H{
 				"code":    200,
 				"message": "登录成功",
+				"token":   token,
+				//"token":
 			})
 			return
 		}
 
 	})
+	//修改信息
+	r.PUT("/user", func(c *gin.Context) {
+
+	})
+
+	//r.PUT("/user")
 	r.Run(":8080")
+}
+func signinHandler(c *gin.Context) {
+	username := c.MustGet("username").(string)
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "success",
+		"data":    gin.H{"username": username},
+	})
+}
+func initSettings() error {
+	//vp, err := setting.NewSetting()
+	vp := viper.New()
+	vp.SetConfigFile("config.yaml") /// ./config/
+	if err := vp.ReadInConfig(); err != nil {
+		fmt.Println(err)
+	}
+	if err := vp.UnmarshalKey("mysql", &setting.DatabaseSettings); err != nil {
+		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
+		//fmt.Println(err)
+		return err
+	}
+	if err := vp.UnmarshalKey("JWT", &setting.JWTSettings); err != nil {
+		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
+		//fmt.Println(err)
+		return err
+	}
+
+	//if err != nil {
+	//	return err
+	//}
+
+	//err = setting.ReadSection("JWT", &config.JWT)
+	//err = vp.UnmarshalKey("mysql", setting.DatabaseSettings)
+	//if err != nil {
+	//	return err
+	//}
+	//err = vp.UnmarshalKey("JWT", setting.JWTSettings)
+	//if err != nil {
+	//	return err
+	//}
+	fmt.Println(setting.JWTSettings)
+	fmt.Println(setting.DatabaseSettings)
+	return nil
+	//return err
 }

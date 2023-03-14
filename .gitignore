@@ -16,3 +16,4 @@
 
 # config files that contain sensitive info
 config.json
+config.yaml

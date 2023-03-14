@@ -3,9 +3,10 @@ package model
 import (
 	"encoding/json"
 	"fmt"
+	"os"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
-	"os"
 )
 
 var DB *gorm.DB
