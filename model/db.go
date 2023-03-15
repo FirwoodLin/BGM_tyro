@@ -19,13 +19,11 @@ type User struct {
 	Description string `gorm:"varchar(256);not null;comment:个人简介" json:"description"`
 	Avatar      string `gorm:"varchar(128);not null;comment:头像url" json:"avatar"`
 }
-type DsnConfig struct {
-	Username string
-	Password string
-	Host     string
-	Port     string
-	Database string
-	Charset  string
+type AuthorizationCode struct {
+	ClientId    string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	RedirectUri string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
+	Scope       int    `gorm:"int;not null;comment:权限元组" json:"scope"`
+	Code        string `gorm:"varchar(128);not null;comment:授权码" json:"code"`
 }
 
 func InitDB() {
@@ -54,9 +52,9 @@ func InitDB() {
 		panic("failed to connect database")
 	}
 	DB = db
-	fmt.Println("%v,database 连接完成", DB)
 	// 自动建表
 	DB.AutoMigrate(&User{})
+	DB.AutoMigrate(&AuthorizationCode{})
 	fmt.Println("migrate success")
 }
 func CreateUser(u *User) {
@@ -81,5 +79,11 @@ func CheckId(id string, u *User) {
 }
 func UpdateInfo(u *User, username, nickname, description, password string) {
 	DB.Model(&u).Select("UserName", "NickName", "Description", "Password").Updates(User{UserName: username, NickName: nickname, Description: description, Password: password})
-	//return err
+}
+
+// TODO:检验客户端和权限范围是否匹配
+
+// CheckClient 检验客户端和权限范围是否匹配
+func CheckClient(clientId, scope string) error {
+	return nil
 }

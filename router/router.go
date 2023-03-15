@@ -177,5 +177,12 @@ func NewRouter(r *gin.Engine) {
 	//		"message": "更新信息成功",
 	//	})
 	//})
+	// OAuth 2.0
+	oauth := r.Group("/oauth")
+	{
+		//oauth.POST("/signup", controller.OauthSignup)
+		oauth.POST("/authorization", controller.OauthGrant)
+		//oauth.POST("/granttoken")
+	}
 	r.Run(":8080")
 }

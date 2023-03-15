@@ -11,7 +11,8 @@ import (
 
 type MyClaims struct {
 	Username string `json:"username"`
-	Password string `json:"password"`
+	// TODO:删除 password
+	//Password string `json:"password"`
 	jwt.StandardClaims
 }
 
@@ -21,12 +22,12 @@ var MySecret = []byte("测试秘钥1")
 
 const TokenExpireDuration = time.Hour * 2
 
-// 造轮子 - 生成 token
-func GenToken(username, password string) (string, error) {
+// GenToken 生成 token
+func GenToken(username string) (string, error) { //func GenToken(username, password string) (string, error) {
 	// 拼装 claim
 	claim := MyClaims{
 		username,
-		password,
+		//password,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(TokenExpireDuration).Unix(),
 			Issuer:    "bgm",
@@ -37,7 +38,7 @@ func GenToken(username, password string) (string, error) {
 	return token, err
 }
 
-// 造轮子 - 解析 token
+// ParseToken 验证 token 的有效性
 func ParseToken(tokenString string) (*MyClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (i interface{}, err error) {
 		return MySecret, nil
@@ -50,6 +51,10 @@ func ParseToken(tokenString string) (*MyClaims, error) {
 	}
 	return nil, errors.New("invalid token")
 }
+
+// func CheckToken()
+
+// JWTAuthMiddleWare 解析 context 中的 token 字段，验证有效性
 func JWTAuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// API 规定：token 在请求头中
@@ -84,4 +89,29 @@ func JWTAuthMiddleWare() gin.HandlerFunc {
 		c.Set("username", token.Username)
 		c.Next()
 	}
+}
+
+// JWTTokenCheck 在Oauth中使用；验证不成功则重定向；返回值为验证结果
+func JWTTokenCheck(c *gin.Context) error {
+	// API 规定：token 在请求头中
+	authHeader := c.Request.Header.Get("Authorization")
+	if authHeader == "" {
+		c.Set("redirect_url", "/authorization")
+		c.Redirect(http.StatusMovedPermanently, "/signin")
+		return errors.New("请求头中 auth 为空")
+	}
+	parts := strings.SplitN(authHeader, " ", 2)
+	if !(len(parts) == 2 && parts[0] == "Bearer") {
+		c.Set("redirect_url", "/authorization")
+		c.Redirect(http.StatusMovedPermanently, "/signin")
+		return errors.New("请求头中 auth 有误")
+	}
+	token, err := ParseToken(parts[1])
+	if err != nil {
+		c.Set("redirect_url", "/authorization")
+		c.Redirect(http.StatusMovedPermanently, "/signin")
+		return errors.New("token 验证失败")
+	}
+	c.Set("username", token.Username)
+	return nil
 }

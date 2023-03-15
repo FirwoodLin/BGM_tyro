@@ -54,8 +54,17 @@
 
 -   初步学习 Go 工程项目架构
 -   OAuth 2.0 截至获取授权码（阮一峰）
+-   OAuth 2.0 实现细节：[授权码 - 原理和方法](https://www.cnblogs.com/blowing00/p/4524412.html)，[state 作用](https://www.cnblogs.com/blowing00/p/14872312.html)，[CSRF攻击](https://www.cnblogs.com/hyddd/archive/2009/04/09/1432744.html)。[Client 的注册和登录](https://blog.yorkxin.org/posts/oauth2-2-cilent-registration/)，[授权码模式 - 细节](https://blog.yorkxin.org/posts/oauth2-4-1-auth-code-grant-flow/)，[JWT、JWE、JWS 、JWK](https://www.51cto.com/article/630971.html)
 
 ## 项目进度
 
 -   完成登录、修改功能
 -   将 controller, router, db 操作分离
+
+# 0316 - Day5
+
+## 学习记录
+
+## 项目进度
+
+-   完成 OAuth2.0 的授权码部分
