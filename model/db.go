@@ -5,6 +5,7 @@ import (
 	"github.com/FirwoodLin/BGM_tyro/setting"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
+	"regexp"
 )
 
 var DB *gorm.DB
@@ -27,29 +28,9 @@ type DsnConfig struct {
 	Charset  string
 }
 
-//	func DsnConfigRead() DsnConfig {
-//		// 读取数据库连接配置信息
-//		// 打开配置文件，延时关闭
-//		file, _ := os.Open("./model/config.json")
-//		fmt.Println(file)
-//
-//		defer file.Close()
-//		// 创建解码器
-//		//decoder := json.NewDecoder(file)
-//		//dsnconf := DsnConfig{}
-//		//Decode从输入流读取下一个json编码值并保存在v指向的值里
-//		//err := decoder.Decode(&dsnconf)
-//		//err = json.Unmarshal(dsnconf, &dsnconf)
-//		if err != nil {
-//			fmt.Println("Error:", err)
-//		}
-//		fmt.Println(dsnconf)
-//		return dsnconf
-//	}
-func InitDB() *gorm.DB {
+func InitDB() {
 	// 初始化数据库连接
 	// 从配置文件中读取
-	//DsnElement := DsnConfigRead()
 	username := setting.DatabaseSettings.UserName
 	password := setting.DatabaseSettings.Password
 	host := setting.DatabaseSettings.Host
@@ -73,26 +54,32 @@ func InitDB() *gorm.DB {
 		panic("failed to connect database")
 	}
 	DB = db
+	fmt.Println("%v,database 连接完成", DB)
 	// 自动建表
 	DB.AutoMigrate(&User{})
 	fmt.Println("migrate success")
-	return DB
-	//DB = Db
 }
-func TestInit() {
-	// 测试 InitDB 函数
-	fmt.Println("Start TestInit")
-	db := InitDB()
-	s1 := &User{
-		UserName:    "itsaiddddd",
-		NickName:    "nicknamefadfdasf",
-		Email:       "tan@163.com.hkj",
-		Description: "desc test",
-		Password:    "fadsfas",
+func CreateUser(u *User) {
+	DB.Create(&u)
+}
+func CheckEmail(email string) error {
+	// 检测邮箱的唯一性
+	err := DB.Where("email = ?", email).First(&User{}).Error
+	return err
+}
+func CheckId(id string, u *User) {
+	regMail, _ := regexp.Compile("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")
+	var retUser User // return User 检索到的用户
+	// 检索用户
+	if regMail.MatchString(id) {
+		// id 是邮箱
+		DB.Where("email = ?", id).Find(&retUser)
+	} else {
+		// id 是用户名
+		DB.Where("user_name = ?", id).Find(&retUser)
 	}
-	db.Create(&s1)
-	fmt.Println(s1)
 }
-func Create(db *gorm.DB) {
-
+func UpdateInfo(u *User, username, nickname, description, password string) {
+	DB.Model(&u).Select("UserName", "NickName", "Description", "Password").Updates(User{UserName: username, NickName: nickname, Description: description, Password: password})
+	//return err
 }

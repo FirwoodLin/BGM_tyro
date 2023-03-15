@@ -14,6 +14,6 @@ type DatabaseSetting struct {
 	Password string `yaml:"Password"`
 	Host     string `yaml:"Host"`
 	Port     string `yaml:"Port"`
-	DBName   string `yaml:"Database"`
+	DBName   string `yaml:"DBName"`
 	Charset  string `yaml:"Charset"`
 }
