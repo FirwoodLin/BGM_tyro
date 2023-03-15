@@ -17,6 +17,8 @@ type MyClaims struct {
 
 var MySecret = []byte("测试秘钥1")
 
+//var MySecret = []byte(setting.JWTSettings.Secret)
+
 const TokenExpireDuration = time.Hour * 2
 
 // 造轮子 - 生成 token

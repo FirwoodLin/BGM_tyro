@@ -10,6 +10,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"net/http"
 	"regexp"
+	"strconv"
 )
 
 func main() {
@@ -17,8 +18,10 @@ func main() {
 	//model.TestInit()
 	err := initSettings()
 	if err != nil {
-		fmt.Println("err in initSettings")
+		//fmt.Println("err in initSettings")
 		fmt.Println(err)
+		// TODO:错误处理
+		//return err
 	}
 	db := model.InitDB()
 	//model.DB
@@ -61,7 +64,7 @@ func main() {
 		}
 		//var emailUser model.User
 		if err := db.Where("email = ?", email).Find(&model.User{}).Error; err != nil {
-			fmt.Println(err)
+			//fmt.Println(err)
 			c.JSON(http.StatusUnprocessableEntity, gin.H{
 				"code":    422,
 				"message": "邮箱已经注册",
@@ -134,9 +137,9 @@ func main() {
 		} else {
 			// id 是用户名
 			//fmt.Println("name signin")
-			fmt.Println(id)
+			//fmt.Println(id)
 			db.Where("user_name = ?", id).Find(&retUser)
-			fmt.Println(retUser)
+			//fmt.Println(retUser)
 		}
 		// 没有检索到
 		if retUser == (model.User{}) {
@@ -174,8 +177,22 @@ func main() {
 
 	})
 	//修改信息
-	r.PUT("/user", func(c *gin.Context) {
-
+	r.PUT("/user", auth.JWTAuthMiddleWare(), func(c *gin.Context) {
+		//c.JSON(http.StatusOK, time.Now().Unix())
+		rawid := c.PostForm("id")
+		username := c.PostForm("username")
+		nickname := c.PostForm("nickname")
+		description := c.PostForm("description")
+		var user model.User
+		id, _ := strconv.Atoi(rawid)
+		user.ID = uint(id)
+		err := db.Model(&user).Select("UserName", "NickName", "Description").Updates(model.User{UserName: username, NickName: nickname, Description: description})
+		if err != nil {
+			c.JSON(http.StatusOK, gin.H{
+				"code":    "5555",
+				"message": "更新信息成功",
+			})
+		}
 	})
 
 	//r.PUT("/user")
@@ -194,7 +211,8 @@ func initSettings() error {
 	vp := viper.New()
 	vp.SetConfigFile("config.yaml") /// ./config/
 	if err := vp.ReadInConfig(); err != nil {
-		fmt.Println(err)
+		return err
+		//fmt.Println(err)
 	}
 	if err := vp.UnmarshalKey("mysql", &setting.DatabaseSettings); err != nil {
 		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
@@ -220,8 +238,9 @@ func initSettings() error {
 	//if err != nil {
 	//	return err
 	//}
-	fmt.Println(setting.JWTSettings)
+	//fmt.Println(setting.JWTSettings)
 	fmt.Println(setting.DatabaseSettings)
+	//fmt.Printf("main-init:%T %v\n", setting.JWTSettings.Secret, setting.JWTSettings.Secret)
 	return nil
 	//return err
 }

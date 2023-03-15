@@ -1,10 +1,8 @@
 package model
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
-
+	"github.com/FirwoodLin/BGM_tyro/setting"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -29,35 +27,37 @@ type DsnConfig struct {
 	Charset  string
 }
 
-func DsnConfigRead() DsnConfig {
-	// 读取数据库连接配置信息
-	// 打开配置文件，延时关闭
-	file, _ := os.Open("./model/config.json")
-	fmt.Println(file)
-
-	defer file.Close()
-	// 创建解码器
-	decoder := json.NewDecoder(file)
-	dsnconf := DsnConfig{}
-	//Decode从输入流读取下一个json编码值并保存在v指向的值里
-	err := decoder.Decode(&dsnconf)
-	//err = json.Unmarshal(dsnconf, &dsnconf)
-	if err != nil {
-		fmt.Println("Error:", err)
-	}
-	fmt.Println(dsnconf)
-	return dsnconf
-}
+//	func DsnConfigRead() DsnConfig {
+//		// 读取数据库连接配置信息
+//		// 打开配置文件，延时关闭
+//		file, _ := os.Open("./model/config.json")
+//		fmt.Println(file)
+//
+//		defer file.Close()
+//		// 创建解码器
+//		//decoder := json.NewDecoder(file)
+//		//dsnconf := DsnConfig{}
+//		//Decode从输入流读取下一个json编码值并保存在v指向的值里
+//		//err := decoder.Decode(&dsnconf)
+//		//err = json.Unmarshal(dsnconf, &dsnconf)
+//		if err != nil {
+//			fmt.Println("Error:", err)
+//		}
+//		fmt.Println(dsnconf)
+//		return dsnconf
+//	}
 func InitDB() *gorm.DB {
 	// 初始化数据库连接
 	// 从配置文件中读取
-	DsnElement := DsnConfigRead()
-	username := DsnElement.Username
-	password := DsnElement.Password
-	host := DsnElement.Host
-	port := DsnElement.Port
-	database := DsnElement.Database
-	charset := DsnElement.Charset
+	//DsnElement := DsnConfigRead()
+	username := setting.DatabaseSettings.UserName
+	password := setting.DatabaseSettings.Password
+	host := setting.DatabaseSettings.Host
+	port := setting.DatabaseSettings.Port
+	//database := setting.DatabaseSettings.DBName
+	// TODO:fix dbname readin
+	database := "bgm"
+	charset := setting.DatabaseSettings.Charset
 	dsn := fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=%s&parseTime=true",
 		username,
 		password,
@@ -75,7 +75,9 @@ func InitDB() *gorm.DB {
 	DB = db
 	// 自动建表
 	DB.AutoMigrate(&User{})
+	fmt.Println("migrate success")
 	return DB
+	//DB = Db
 }
 func TestInit() {
 	// 测试 InitDB 函数
