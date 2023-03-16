@@ -53,6 +53,7 @@ func OauthGrant(c *gin.Context) {
 		})
 	}
 	code := base64.URLEncoding.EncodeToString(b)
+	// 生成 refresh token
 	// 返回授权码
 	c.Redirect(http.StatusTemporaryRedirect, redirectUri+"?code="+code+"?state="+state)
 }

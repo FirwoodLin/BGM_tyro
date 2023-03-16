@@ -15,20 +15,22 @@ var DB *gorm.DB
 
 type User struct {
 	gorm.Model
-	UserName    string `gorm:"varchar(32);not null;comment:用户名" json:"name"`
-	NickName    string `gorm:"varchar(32);not null;comment:昵称" json:"nickname"`
+	UserName    string `gorm:"varchar(32);not null;comment:用户名" json:"name" validate:"required,max=32"`
+	NickName    string `gorm:"varchar(32);not null;comment:昵称" json:"nickname" validate:"required,max=32"`
 	Password    string `gorm:"size:60;not null;comment:密码的哈希" json:"password"`
-	Email       string `gorm:"varchar(256);not null;unique;comment:邮箱" json:"email"`
-	Description string `gorm:"varchar(256);not null;comment:个人简介" json:"description"`
-	Avatar      string `gorm:"varchar(128);not null;comment:头像url" json:"avatar"`
+	Email       string `gorm:"varchar(256);not null;unique;comment:邮箱" json:"email" validate:"required,max=256,email"`
+	Description string `gorm:"varchar(256);not null;comment:个人简介" json:"description" validate:"required,max=256"`
+	Avatar      string `gorm:"varchar(128);not null;comment:头像url" json:"avatar" validate:"required,max=128,uri"`
 }
 type AuthorizationCode struct {
 	gorm.Model
-	ClientId    string    `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
-	RedirectUri string    `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
-	Scope       string    `gorm:"varchar(128);not null;comment:权限元组" json:"scope"`
-	Code        string    `gorm:"varchar(128);not null;comment:授权码" json:"code"`
-	ExpireAt    time.Time `gorm:"datetime(3);not null;comment:过期时间" json:"expireAt"`
+	ClientId     string    `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	RedirectUri  string    `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
+	Scope        string    `gorm:"varchar(128);not null;comment:权限元组" json:"scope"`
+	Code         string    `gorm:"varchar(32);not null;comment:授权码" json:"code"`
+	AccessToken  string    `gorm:"varchar(128);not null;comment:授权码" json:"AccessToken"`
+	RefreshToken string    `gorm:"varchar(128);not null;comment:授权码" json:"refreshToken"`
+	ExpireAt     time.Time `gorm:"datetime(3);not null;comment:过期时间" json:"expireAt"`
 }
 
 // InitDB 初始化连接并自动迁移
@@ -39,9 +41,7 @@ func InitDB() {
 	password := setting.DatabaseSettings.Password
 	host := setting.DatabaseSettings.Host
 	port := setting.DatabaseSettings.Port
-	//database := setting.DatabaseSettings.DBName
-	// TODO:fix dbname readin
-	database := "bgm"
+	database := setting.DatabaseSettings.DBName
 	charset := setting.DatabaseSettings.Charset
 	dsn := fmt.Sprintf("%s:%s@(%s:%s)/%s?charset=%s&parseTime=true",
 		username,
@@ -61,7 +61,7 @@ func InitDB() {
 	// 自动建表
 	DB.AutoMigrate(&User{})
 	DB.AutoMigrate(&AuthorizationCode{})
-	fmt.Println("migrate success")
+	//fmt.Println("migrate success")
 }
 
 // CreateUser 插入用户
@@ -113,5 +113,10 @@ func CheckClient(clientId, scope string) error {
 			return errors.New("unauthed scope")
 		}
 	}
+	return nil
+}
+
+// UpdateClient 更新 client 的过期时间、code
+func UpdateClient(clientId, scope string) error {
 	return nil
 }

@@ -77,3 +77,21 @@
 ## Debug 记录
 
 -   DB 中创建了 retUser，形参定义为 u；signin 中创建了 retUser。u 未使用，导致 signin 中的 retUser 始终为空。
+
+# 0317 - Day6
+
+## 学习记录
+
+-   `validator`的使用。`min/max`限制字符串的长度；`email/uri`限制类别
+
+-   `gomail`的使用；
+
+-   [access token的格式](https://stackoverflow.com/questions/50031993/what-characters-are-allowed-in-an-oauth2-access-token)：b64编码，适合在 header 中传输
+
+## 项目进度
+
+-   [ ] 阶段一  - 邮箱认证功能
+-   [ ] 阶段三  - refresh
+-   [ ] 阶段三 - 合规
+
+## Debug 记录

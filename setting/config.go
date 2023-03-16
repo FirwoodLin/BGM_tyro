@@ -3,6 +3,7 @@ package setting
 var (
 	DatabaseSettings *DatabaseSetting
 	JWTSettings      *JWTSetting
+	MailSettings     *MailSetting
 )
 
 type JWTSetting struct {
@@ -16,4 +17,10 @@ type DatabaseSetting struct {
 	Port     string `yaml:"Port"`
 	DBName   string `yaml:"DBName"`
 	Charset  string `yaml:"Charset"`
+}
+type MailSetting struct {
+	Username string `yaml:"Username"`
+	Secret   string `yaml:"Secret"`
+	Host     string `yaml:"Host"`
+	Port     int    `yaml:"Port"`
 }

@@ -1,18 +1,32 @@
 package setting
 
 import (
-	"fmt"
 	"github.com/spf13/viper"
 )
 
-func NewSetting() (*viper.Viper, error) {
+func InitSettings() error {
 	vp := viper.New()
-	vp.SetConfigFile("/config/config.yaml")
-
-	err := vp.ReadInConfig()
-	if err != nil {
-		fmt.Println("err in read conf")
-		return nil, err
+	vp.SetConfigFile("config.yaml") /// ./config/
+	if err := vp.ReadInConfig(); err != nil {
+		return err
+		//fmt.Println(err)
 	}
-	return vp, nil
+	if err := vp.UnmarshalKey("mysql", &DatabaseSettings); err != nil {
+		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
+		//fmt.Println(err)
+		return err
+	}
+	if err := vp.UnmarshalKey("JWT", &JWTSettings); err != nil {
+		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
+		//fmt.Println(err)
+		return err
+	}
+	if err := vp.UnmarshalKey("mail", &MailSettings); err != nil {
+		// if err := vp.UnmarshalKey("mysql.username", &s); err != nil {
+		//fmt.Println(err)
+		return err
+	}
+	//fmt.Printf("in initsettings below ")
+	//fmt.Println(DatabaseSettings)
+	return nil
 }
