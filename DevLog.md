@@ -65,6 +65,15 @@
 
 ## 学习记录
 
+-   [OAuth2.0报文](https://learnku.com/articles/20082)
+-   对称加密-AES，填充算法。由于 JWT 签名结果较长，考虑 code 仅在服务器使用，~~所以采用 AES 加密 ClientId~~
+-   使用`crypto/rand`生成随机字符串作为授权码
+-   [Github OAuth2文档](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/authorizing-oauth-apps)参考设计 API
+
 ## 项目进度
 
 -   完成 OAuth2.0 的授权码部分
+
+## Debug 记录
+
+-   DB 中创建了 retUser，形参定义为 u；signin 中创建了 retUser。u 未使用，导致 signin 中的 retUser 始终为空。

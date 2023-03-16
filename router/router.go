@@ -181,7 +181,7 @@ func NewRouter(r *gin.Engine) {
 	oauth := r.Group("/oauth")
 	{
 		//oauth.POST("/signup", controller.OauthSignup)
-		oauth.POST("/authorization", controller.OauthGrant)
+		oauth.GET("/authorization", controller.OauthGrant)
 		//oauth.POST("/granttoken")
 	}
 	r.Run(":8080")

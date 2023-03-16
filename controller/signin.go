@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
 	"github.com/gin-gonic/gin"
@@ -96,7 +97,9 @@ func SignUp(c *gin.Context) {
 		Avatar:      avatar,
 	}
 	model.CreateUser(&newUser)
-	token, err := auth.GenToken(name, password)
+	//token, err := auth.GenToken(name, password)
+	token, err := auth.GenToken(name)
+
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    5555,
@@ -115,12 +118,12 @@ func SignUp(c *gin.Context) {
 }
 func SignIn(c *gin.Context) {
 	//fmt.Println("in signin")
-
 	id := c.PostForm("id")
 	password := c.PostForm("password")
 	// 检索用户
 	var retUser model.User // 检索到的用户
 	model.CheckId(id, &retUser)
+	fmt.Println(retUser)
 	// 没有检索到
 	if retUser == (model.User{}) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -139,7 +142,7 @@ func SignIn(c *gin.Context) {
 		return
 	} else {
 		// 生成 token
-		token, err := auth.GenToken(id, password)
+		token, err := auth.GenToken(id)
 		if err != nil {
 			c.JSON(http.StatusOK, gin.H{
 				"code":    5555,
