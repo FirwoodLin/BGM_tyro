@@ -1,18 +1,21 @@
 package controller
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
+	"io"
 	"net/http"
 	"regexp"
 	"strconv"
+	"time"
 )
 
-//var db *gorm.DB = model.DB
-
+// SignUp 注册用户
 func SignUp(c *gin.Context) {
 	// ### 数据解析 ###
 	name := c.PostForm("name")
@@ -38,10 +41,26 @@ func SignUp(c *gin.Context) {
 		})
 		return
 	}
-	// 邮箱校验（唯一，合法）
-	// TODO：检验邮箱唯一
+
+	// 简介校验 - 长度
+	if len(description) > 255 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    422,
+			"message": "简介长度不能长于255",
+		})
+		return
+	}
+	// 密码校验 - 长度
+	if len(password) < 8 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    422,
+			"message": "密码长度不小于8",
+		})
+		return
+	}
+	// 邮箱校验（唯一，合法，有效）
 	reg, _ := regexp.Compile("^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\\.[a-zA-Z0-9_-]+)+$")
-	// 邮箱校验 - 邮箱格式
+	// 邮箱校验 - 合法
 	isMatch := reg.MatchString(email)
 	if isMatch == false {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
@@ -59,23 +78,6 @@ func SignUp(c *gin.Context) {
 		})
 		c.Abort()
 		return
-	} else {
-	}
-	// 简介校验 - 长度
-	if len(description) > 255 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"code":    422,
-			"message": "简介长度不能长于255",
-		})
-		return
-	}
-	// 密码校验 - 长度
-	if len(password) < 8 {
-		c.JSON(http.StatusUnprocessableEntity, gin.H{
-			"code":    422,
-			"message": "密码长度不小于8",
-		})
-		return
 	}
 	// 密码 - 加密
 	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
@@ -86,18 +88,37 @@ func SignUp(c *gin.Context) {
 		})
 		return
 	}
+	// 邮箱校验 - 有效 - 发送激活链接
+	byteVeriSecret := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, byteVeriSecret); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    5555,
+			"message": "激活 token 生成错误",
+		})
+	}
+	veriSecret := base64.URLEncoding.EncodeToString(byteVeriSecret)
 	// 存储到数据库
 	newUser := model.User{
-		UserName:    name,
-		NickName:    nickname,
-		Password:    string(encryptedPassword),
-		Email:       email,
-		Description: description,
-		Avatar:      avatar,
+		UserName:          name,
+		NickName:          nickname,
+		Password:          string(encryptedPassword),
+		Email:             email,
+		Description:       description,
+		Avatar:            avatar,
+		VeriToken:         veriSecret,
+		IsVerified:        0,
+		VeriTokenExpireAt: time.Now().Add(time.Minute * 15).Unix(),
 	}
 	model.CreateUser(&newUser)
-	//fmt.Printf("新用户的ID", newUser.ID)
-	//token, err := auth.GenToken(name, password)
+	// 发送激活邮件
+	err = SendEmail(newUser, veriSecret)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    5555,
+			"message": "邮件发送错误",
+		})
+	}
+	// 生成 token
 	token, err := auth.GenToken(name)
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -115,15 +136,17 @@ func SignUp(c *gin.Context) {
 	})
 	c.Abort()
 }
+
+// SignIn 登录
 func SignIn(c *gin.Context) {
 	//fmt.Println("in signin")
 	rawId := c.PostForm("rawId")
 	password := c.PostForm("password")
-	// 检索用户
+	// 检索用户用户名/密码
 	var retUser model.User // 检索到的用户
 	model.CheckId(rawId, &retUser)
 	//fmt.Println(retUser)
-	// 没有检索到
+	// 检索用户用户名/密码 - 没有检索到
 	if retUser == (model.User{}) {
 		c.JSON(http.StatusUnprocessableEntity, gin.H{
 			"code":    422,
@@ -131,6 +154,7 @@ func SignIn(c *gin.Context) {
 		})
 		return
 	}
+	// 检验密码正确性
 	isValid := bcrypt.CompareHashAndPassword([]byte(retUser.Password), []byte(password))
 	if isValid != nil {
 		// 密码-用户名 检验失败
@@ -139,25 +163,35 @@ func SignIn(c *gin.Context) {
 			"message": "用户名或密码无效",
 		})
 		return
-	} else {
-		// 生成 token
-		token, err := auth.GenToken(rawId)
-		if err != nil {
-			c.JSON(http.StatusOK, gin.H{
-				"code":    5555,
-				"message": "token生成失败",
-			})
-			return
-		}
+	}
+	// 检验是否激活
+	if retUser.IsVerified == 0 {
 		c.JSON(http.StatusOK, gin.H{
-			"code":    200,
-			"message": "登录成功",
-			"id":      retUser.ID,
-			"token":   token,
+			"code":    5555,
+			"message": "用户尚未激活，请前往邮箱激活",
 		})
 		return
 	}
+	// 生成 token
+	token, err := auth.GenToken(rawId)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    5555,
+			"message": "token生成失败",
+		})
+		return
+	}
+	// 返回token和ID
+	c.JSON(http.StatusOK, gin.H{
+		"code":    200,
+		"message": "登录成功",
+		"id":      retUser.ID,
+		"token":   token,
+	})
+	return
 }
+
+// Update 更新用户数据
 func Update(c *gin.Context) {
 	rawid := c.PostForm("id")
 	password := c.PostForm("password")

@@ -15,12 +15,15 @@ var DB *gorm.DB
 
 type User struct {
 	gorm.Model
-	UserName    string `gorm:"varchar(32);not null;comment:用户名" json:"name" validate:"required,max=32"`
-	NickName    string `gorm:"varchar(32);not null;comment:昵称" json:"nickname" validate:"required,max=32"`
-	Password    string `gorm:"size:60;not null;comment:密码的哈希" json:"password"`
-	Email       string `gorm:"varchar(256);not null;unique;comment:邮箱" json:"email" validate:"required,max=256,email"`
-	Description string `gorm:"varchar(256);not null;comment:个人简介" json:"description" validate:"required,max=256"`
-	Avatar      string `gorm:"varchar(128);not null;comment:头像url" json:"avatar" validate:"required,max=128,uri"`
+	UserName          string `gorm:"varchar(32);not null;comment:用户名" json:"name" validate:"required,max=32"`
+	NickName          string `gorm:"varchar(32);not null;comment:昵称" json:"nickname" validate:"required,max=32"`
+	Password          string `gorm:"size:60;not null;comment:密码的哈希" json:"password"`
+	Email             string `gorm:"varchar(256);not null;unique;comment:邮箱" json:"email" validate:"required,max=256,email"`
+	Description       string `gorm:"varchar(256);not null;comment:个人简介" json:"description" validate:"required,max=256"`
+	Avatar            string `gorm:"varchar(128);not null;comment:头像url" json:"avatar" validate:"required,max=128,uri"`
+	VeriToken         string `gorm:"varchar(128);not null;comment:激活token" json:"veriToken"`
+	VeriTokenExpireAt int64  `gorm:"BIGINT;not null;comment:token过期时间" json:"veriTokenExpireAt"`
+	IsVerified        int    `gorm:"tinyint;default:0;comment:账户是否激活" json:"isVerified"`
 }
 type AuthorizationCode struct {
 	gorm.Model
@@ -94,6 +97,26 @@ func CheckId(id string, u *User) {
 // UpdateInfo 更新用户信息
 func UpdateInfo(u *User, username, nickname, description, password string) {
 	DB.Model(&u).Select("UserName", "NickName", "Description", "Password").Updates(User{UserName: username, NickName: nickname, Description: description, Password: password})
+}
+
+// CheckVeri 检测激活链接是否有效；过期删除；无效报错
+func CheckVeri(user *User) error {
+	var realUser User
+	realUser.ID = user.ID
+	err := DB.Find(&realUser).Error
+	if err != nil {
+		return errors.New("找不到此用户")
+	}
+	if realUser.VeriToken != user.VeriToken {
+		return errors.New("token错误")
+	}
+	if realUser.VeriTokenExpireAt > time.Now().Unix() {
+		DB.Delete(&realUser)
+		return errors.New("token过期，请重新注册")
+	}
+	// 检查通过，用户验证成功
+	DB.Model(&realUser).Update("is_verified", 1)
+	return nil
 }
 
 // CheckClient 检验 clientId 和 scope 范围是否匹配

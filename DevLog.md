@@ -88,6 +88,10 @@
 
 -   [access token的格式](https://stackoverflow.com/questions/50031993/what-characters-are-allowed-in-an-oauth2-access-token)：b64编码，适合在 header 中传输
 
+-   嵌套结构体的字段初始化
+
+-   rand 生成的随机数据，使用base64URL编码为字符串
+
 ## 项目进度
 
 -   [ ] 阶段一  - 邮箱认证功能
