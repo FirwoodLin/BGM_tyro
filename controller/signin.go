@@ -3,6 +3,7 @@ package controller
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
 	"github.com/gin-gonic/gin"
@@ -193,15 +194,41 @@ func SignIn(c *gin.Context) {
 
 // Update 更新用户数据
 func Update(c *gin.Context) {
+	username := c.PostForm("username")
+	if tokenUserName, ok := c.Get("username"); !ok || username != tokenUserName {
+		fmt.Printf("two username:%v-%v\n", tokenUserName, username)
+		c.JSON(http.StatusOK, gin.H{
+			"code":    5555,
+			"message": "token 用户名与请求用户名不一致",
+		})
+		c.Abort()
+		return
+	}
+
 	rawid := c.PostForm("id")
 	password := c.PostForm("password")
-	username := c.PostForm("username")
 	nickname := c.PostForm("nickname")
 	description := c.PostForm("description")
 	var user model.User
 	id, _ := strconv.Atoi(rawid)
 	user.ID = uint(id)
-	model.UpdateInfo(&user, username, nickname, description, password)
+	// 密码转换、加密
+	if len(password) < 8 {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    422,
+			"message": "密码长度不小于8",
+		})
+		return
+	}
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	if err != nil {
+		c.JSON(http.StatusUnprocessableEntity, gin.H{
+			"code":    422,
+			"message": "密码加密错误",
+		})
+		return
+	}
+	model.UpdateInfo(&user, username, nickname, description, string(encryptedPassword))
 	//if err != nil {
 	c.JSON(http.StatusOK, gin.H{
 		"code":    "5555",

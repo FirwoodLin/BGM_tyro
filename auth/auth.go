@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -43,6 +44,7 @@ func ParseToken(tokenString string) (*MyClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (i interface{}, err error) {
 		return MySecret, nil
 	})
+	fmt.Printf("JWT token after parse:%v\n", token)
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,7 @@ func JWTAuthMiddleWare() gin.HandlerFunc {
 	}
 }
 
-// JWTTokenCheck 在Oauth中使用；验证不成功则重定向；返回值为验证结果
+// JWTTokenCheck 检查登录产生的 token;在Oauth中使用；验证不成功则重定向；返回值为验证结果
 func JWTTokenCheck(c *gin.Context) error {
 	// API 规定：token 在请求头中
 	authHeader := c.Request.Header.Get("Authorization")
