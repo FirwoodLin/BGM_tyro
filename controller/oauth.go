@@ -23,7 +23,7 @@ func OauthAuthCode(c *gin.Context) {
 	responseType := c.Query("response_type")
 	// 非授权码模式，报错
 	if responseType != "code" {
-		c.JSON(http.StatusNotFound, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "目前不支持的授权方式",
 		})
@@ -78,18 +78,28 @@ func OauthAuthCode(c *gin.Context) {
 	c.Redirect(http.StatusFound, redirectUri+"?code="+authCode+"?state="+state)
 }
 
-// OauthToken 根据 code 返回 access token 和 refresh token
+// OauthToken 根据 code 返回 access token 和 refresh token；或者刷新token
 func OauthToken(c *gin.Context) {
 	grantType := c.PostForm("grant_type")
-	code := c.PostForm("code")
-	redirectUri := c.PostForm("redirect_uri")
-	// 检查 grant_type 是否为授权码
-	if grantType != "authorization_code" {
+	// 检查 grant_type
+	switch grantType {
+	case "authorization_code":
+		OauthTokenAuthCode(c)
+	case "refresh_token":
+		OauthTokenRefresh(c)
+	default:
+		// 无效类型进行报错
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "grant_type 错误",
 		})
 	}
+}
+
+// OauthTokenAuthCode 授权码模式颁发 token
+func OauthTokenAuthCode(c *gin.Context) {
+	code := c.PostForm("code")
+	redirectUri := c.PostForm("redirect_uri")
 	// 检查 code 是否使用过、是否过期
 	if err := model.CheckCode(code); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -148,11 +158,12 @@ func OauthToken(c *gin.Context) {
 	accessToken := base64.URLEncoding.EncodeToString(byteAccessToken)
 	// 持久化
 	var accessTokenStruct = model.AccessToken{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
-		ClientId:     clientID,
-		RedirectUri:  redirectUri,
-		ExpireAt:     time.Now().Add(time.Hour * 2).Unix(),
+		AccessToken:     accessToken,
+		RefreshToken:    refreshToken,
+		ClientId:        clientID,
+		RedirectUri:     redirectUri,
+		AccessExpireAt:  time.Now().Add(time.Hour * 2).Unix(),
+		RefreshExpireAt: time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
 	if err := model.CreateToken(&accessTokenStruct); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -179,4 +190,9 @@ func OauthToken(c *gin.Context) {
 		"scope":         scope,
 	})
 	return
+}
+
+// OauthTokenRefresh 根据 refresh token 颁发新 access token
+func OauthTokenRefresh(c *gin.Context) {
+	// TODO:完成令牌的刷新
 }

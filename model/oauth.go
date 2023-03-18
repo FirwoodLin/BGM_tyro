@@ -86,6 +86,9 @@ func GetScope(id string) (string, error) {
 	}
 	return authCode.Scope, nil
 }
+func UpdateToken() {
+
+}
 
 // UpdateClient 更新 client 的过期时间、code
 //func UpdateClient(clientId, scope string) error {

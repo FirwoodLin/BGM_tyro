@@ -34,11 +34,12 @@ type AuthorizationCode struct {
 }
 type AccessToken struct {
 	gorm.Model
-	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
-	AccessToken  string `gorm:"varchar(128);not null" json:"accessToken"`
-	RefreshToken string `gorm:"varchar(128);not null" json:"refreshToken"`
-	RedirectUri  string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
-	ExpireAt     int64  `gorm:"int;not null;comment:token过期时间" json:"expireAt"`
+	ClientId        string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	AccessToken     string `gorm:"varchar(128);not null" json:"accessToken"`
+	RefreshToken    string `gorm:"varchar(128);not null" json:"refreshToken"`
+	RedirectUri     string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
+	AccessExpireAt  int64  `gorm:"int;not null;comment:token过期时间" json:"expireAt"`
+	RefreshExpireAt int64  `gorm:"int;not null;comment:token过期时间" json:"refreshExpireAt"`
 }
 type Client struct {
 	gorm.Model

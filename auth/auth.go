@@ -98,19 +98,19 @@ func JWTTokenCheck(c *gin.Context) error {
 	authHeader := c.Request.Header.Get("Authorization")
 	if authHeader == "" {
 		c.Set("redirect_url", "/authorization")
-		c.Redirect(http.StatusMovedPermanently, "/signin")
+		c.Redirect(http.StatusFound, "/signin")
 		return errors.New("请求头中 auth 为空")
 	}
 	parts := strings.SplitN(authHeader, " ", 2)
 	if !(len(parts) == 2 && parts[0] == "Bearer") {
 		c.Set("redirect_url", "/authorization")
-		c.Redirect(http.StatusMovedPermanently, "/signin")
+		c.Redirect(http.StatusFound, "/signin")
 		return errors.New("请求头中 auth 有误")
 	}
 	token, err := ParseToken(parts[1])
 	if err != nil {
 		c.Set("redirect_url", "/authorization")
-		c.Redirect(http.StatusMovedPermanently, "/signin")
+		c.Redirect(http.StatusFound, "/signin")
 		return errors.New("token 验证失败")
 	}
 	c.Set("username", token.Username)
