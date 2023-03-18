@@ -24,12 +24,26 @@ type User struct {
 type AuthorizationCode struct {
 	gorm.Model
 	ClientId    string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	Code        string `gorm:"varchar(32);not null;comment:授权码" json:"code"`
+	ExpireAt    int64  `gorm:"int;not null;comment:code过期时间" json:"expireAt"`
 	RedirectUri string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
 	Scope       string `gorm:"varchar(128);not null;comment:权限元组" json:"scope"`
-	Code        string `gorm:"varchar(32);not null;comment:授权码" json:"code"`
+	IsUsed      int    `gorm:"int;default:0;comment:code是否已经使用过" json:"isUsed"`
 	//AccessToken  string    `gorm:"varchar(128);not null;comment:授权码" json:"AccessToken"`
 	//RefreshToken string    `gorm:"varchar(128);not null;comment:授权码" json:"refreshToken"`
-	ExpireAt int64 `gorm:"int;not null;comment:过期时间" json:"expireAt"`
+}
+type AccessToken struct {
+	gorm.Model
+	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	AccessToken  string `gorm:"varchar(128);not null" json:"accessToken"`
+	RefreshToken string `gorm:"varchar(128);not null" json:"refreshToken"`
+	RedirectUri  string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
+	ExpireAt     int64  `gorm:"int;not null;comment:token过期时间" json:"expireAt"`
+}
+type Client struct {
+	gorm.Model
+	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
+	ClientSecret string `gorm:"varchar(128);not null;comment:客户端密码" json:"clientSecret"`
 }
 
 // InitDB 初始化连接并自动迁移

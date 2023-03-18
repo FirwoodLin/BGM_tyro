@@ -12,7 +12,6 @@ import (
 
 type MyClaims struct {
 	Username string `json:"username"`
-	// TODO:删除 password
 	//Password string `json:"password"`
 	jwt.StandardClaims
 }

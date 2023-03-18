@@ -106,3 +106,8 @@
 ## 学习记录
 
 -   API 中 HTTP 状态码和自定义状态码的设计
+-   重读[授权码模式-全流程解析](https://www.cnblogs.com/blowing00/p/4524412.html)，[授权码-实现细节](https://blog.yorkxin.org/posts/oauth2-4-1-auth-code-grant-flow/)
+
+## 开发记录
+
+-   AccessToken 和 Refresh Token 的颁发

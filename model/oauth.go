@@ -3,10 +3,11 @@ package model
 import (
 	"errors"
 	"strings"
+	"time"
 )
 
-// CheckClient 检验 clientId 和 scope 范围是否匹配
-func CheckClient(clientId, scope string) error {
+// CheckScope 检验 clientId 和 scope 范围是否匹配
+func CheckScope(clientId, scope, redirectUri string) error {
 	var client AuthorizationCode
 	// 检查 client 是否注册
 	if err := DB.Where("client_id = ?", clientId).Find(&client).Error; err != nil {
@@ -22,6 +23,10 @@ func CheckClient(clientId, scope string) error {
 			return errors.New("unauthed scope")
 		}
 	}
+	// 检查 redirect_uri 是否一致
+	if client.RedirectUri != redirectUri {
+		return errors.New("重定向 Uri 与注册不一致")
+	}
 	return nil
 }
 
@@ -33,8 +38,57 @@ func UpdateAuthCode(authCode *AuthorizationCode) error {
 	return nil
 }
 
-// UpdateClient 更新 client 的过期时间、code
-func UpdateClient(clientId, scope string) error {
-	// TODO:更新 client 的过期时间
+// CheckCode 检验 code 是否使用过、是否过期；有效就返回 scope 和nil
+func CheckCode(code string) error {
+	var authCode AuthorizationCode
+	if err := DB.Where(&AuthorizationCode{Code: code}).First(&authCode); err != nil {
+		return errors.New("授权码无效-不存在")
+	}
+	if authCode.IsUsed == 1 {
+		return errors.New("授权码无效-已经使用过")
+	}
+	if authCode.ExpireAt < time.Now().Unix() {
+		return errors.New("授权码无效-过期")
+	}
 	return nil
 }
+func CreateToken(accessToken *AccessToken) error {
+	if err := DB.Create(&accessToken).Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+// CheckSecret 检查 ClientSecret,redirect_uri 和 ClientId 是否一致
+func CheckSecret(id, secret, uri string) error {
+	var client Client
+	if err := DB.Where(&Client{ClientId: id}).First(&client).Error; err != nil {
+		return err
+	}
+	if client.ClientSecret != secret {
+		return errors.New("client id 与 secret不匹配")
+	}
+	var authCode AuthorizationCode
+	if err := DB.Where(&AuthorizationCode{ClientId: id}).First(&authCode).Error; err != nil {
+		return errors.New("client id 未授权")
+	}
+	if authCode.RedirectUri != uri {
+		return errors.New("RedirectUri 错误")
+	}
+	return nil
+}
+
+// GetScope 查询 code 对应的 scope
+func GetScope(id string) (string, error) {
+	var authCode AuthorizationCode
+	if err := DB.Where(&AuthorizationCode{ClientId: id}).First(&authCode).Error; err != nil {
+		return "", err
+	}
+	return authCode.Scope, nil
+}
+
+// UpdateClient 更新 client 的过期时间、code
+//func UpdateClient(clientId, scope string) error {
+//	// 更新 client 的过期时间
+//	return nil
+//}
