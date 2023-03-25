@@ -36,7 +36,7 @@ func SendEmail(user model.User, veriSecret string) error {
 	m.SetHeader("To", user.Email)
 	m.SetHeader("Here's your verify link of BGM") // 邮件主题
 	// 设置正文
-	link := "http://localhost:8080/verify?token=%s?id=%d"
+	link := "http://localhost:8080/verify?token=%s&id=%d"
 	veriLink := fmt.Sprintf(link, veriSecret, user.ID)
 	m.SetBody("text/html", fmt.Sprintf(message, user.UserName, veriLink))
 	// 设置发件邮箱
@@ -59,13 +59,17 @@ func SendEmail(user model.User, veriSecret string) error {
 func VerifyEmail(c *gin.Context) {
 	token := c.Query("token")
 	idInt, _ := strconv.Atoi(c.Query("id"))
+	fmt.Printf("in veri:%v %v\n", token, idInt)
 	var user = model.User{VeriToken: token, Model: gorm.Model{ID: uint(idInt)}}
+	fmt.Printf("before CheckVeri:%v\n", user)
 	err := model.CheckVeri(&user)
+	fmt.Printf("after CheckVeri err:%v\n", err)
 	if err != nil {
-		c.JSON(http.StatusOK, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": err,
 		})
+		return
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"code":    5555,

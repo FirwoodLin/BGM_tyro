@@ -140,15 +140,18 @@ func SignUp(c *gin.Context) {
 
 // SignIn 登录
 func SignIn(c *gin.Context) {
-	//fmt.Println("in signin")
-	rawId := c.PostForm("rawId")
+	fmt.Println("in signin")
+	rawId := c.PostForm("id")
 	password := c.PostForm("password")
 	// 检索用户用户名/密码
 	var retUser model.User // 检索到的用户
-	model.CheckId(rawId, &retUser)
 	//fmt.Println(retUser)
+	//fmt.Printf("before search:%v\n", retUser)
+
+	model.CheckId(rawId, &retUser)
+	fmt.Printf("after search:%v\n", retUser)
 	// 检索用户用户名/密码 - 没有检索到
-	if retUser == (model.User{}) {
+	if retUser.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    422,
 			"message": "用户名或密码无效",
@@ -166,7 +169,8 @@ func SignIn(c *gin.Context) {
 		return
 	}
 	// 检验是否激活
-	if retUser.IsVerified == 0 {
+	// 更新邮箱激活状态
+	if model.CheckUserVerified(&retUser) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "用户尚未激活，请前往邮箱激活",

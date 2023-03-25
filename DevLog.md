@@ -111,3 +111,24 @@
 ## 开发记录
 
 -   AccessToken 和 Refresh Token 的颁发
+
+# 0325 - Day n+1
+
+整理一下 gORM 的查找
+
+## Debug 记录
+
+-   ```go
+    if realUser.VeriTokenExpireAt < time.Now().Unix() {
+    		DB.Delete(&user)
+    		return errors.New("token过期，请重新注册")
+    	}
+    ```
+
+    应为小于；本为大于
+
+-   检测激活链接的有效性后，没有设置数据库中的“激活状态”一列
+
+## 进度
+
+-   邮箱激活 fix
