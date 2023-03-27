@@ -132,3 +132,39 @@
 ## 进度
 
 -   邮箱激活 fix
+-   发现 JWT token 应该用 id 作为统一的身份标识，而不是用户名/邮箱——这会造成验证困难
+
+# 0327 - Day n+2
+
+## 开发进度
+
+-   处理使用 map 前先 make 的问题
+
+-   Oauth2.0 颁发 code
+
+
+## 学习记录
+
+## TODO
+
+-   重定向至登录页（重定向后默认是GET，但注册为POST）
+-   关于重定向
+    -   返回到 client 网站（本地监听一个端口）。服务器处理 code 换 access 的请求
+
+-   一些对过程的梳理
+    -   ClientId 的校验：去client表查找；
+    -   code 的颁发：依据 clientID 和登录产生的 token，存储到授权码这个 table；
+    -   access 的颁发：
+        -   依据 code 和 clientID 存储到 access token 表
+        -   依据 refresh token 和 id 更新到 access token
+
+
+# 开发计划
+
+4月2日中午前完成最终 commit
+
+-   Refresh Token 换 Access Token
+-   实现 OIDC 服务
+-   收藏番剧
+-   好友功能
+-   绑定 bangumi

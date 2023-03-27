@@ -2,18 +2,26 @@ package auth
 
 import (
 	"errors"
-	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 )
 
 type MyClaims struct {
-	Username string `json:"username"`
+	UserId uint `json:"id"`
+	//Username string `json:"username"`
 	//Password string `json:"password"`
 	jwt.StandardClaims
+	//Audience  string `json:"aud,omitempty"`
+	//ExpiresAt int64  `json:"exp,omitempty"`
+	//Id        string `json:"jti,omitempty"`
+	//IssuedAt  int64  `json:"iat,omitempty"`
+	//Issuer    string `json:"iss,omitempty"`
+	//NotBefore int64  `json:"nbf,omitempty"`
+	//Subject   string `json:"sub,omitempty"`
 }
 
 var MySecret = []byte("测试秘钥1")
@@ -23,10 +31,10 @@ var MySecret = []byte("测试秘钥1")
 const TokenExpireDuration = time.Hour * 2
 
 // GenToken 生成 token
-func GenToken(username string) (string, error) { //func GenToken(username, password string) (string, error) {
+func GenToken(id uint) (string, error) { //func GenToken(username, password string) (string, error) {
 	// 拼装 claim
 	claim := MyClaims{
-		username,
+		id,
 		//password,
 		jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(TokenExpireDuration).Unix(),
@@ -40,10 +48,11 @@ func GenToken(username string) (string, error) { //func GenToken(username, passw
 
 // ParseToken 验证 token 的有效性
 func ParseToken(tokenString string) (*MyClaims, error) {
+	log.Printf("model-ParseToken:%v", tokenString)
 	token, err := jwt.ParseWithClaims(tokenString, &MyClaims{}, func(token *jwt.Token) (i interface{}, err error) {
 		return MySecret, nil
 	})
-	fmt.Printf("JWT token after parse:%v\n", token)
+	log.Printf("model-ParseToken:JWT token after parse:%v\n", token)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +64,7 @@ func ParseToken(tokenString string) (*MyClaims, error) {
 
 // func CheckToken()
 
-// JWTAuthMiddleWare 解析 context 中的 token 字段，验证有效性
+// JWTAuthMiddleWare 在 update 中使用；解析 context 中的 token 字段，验证有效性
 func JWTAuthMiddleWare() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		// API 规定：token 在请求头中
@@ -87,7 +96,7 @@ func JWTAuthMiddleWare() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		c.Set("username", token.Username)
+		c.Set("user_id", token.UserId)
 		c.Next()
 	}
 }
@@ -108,11 +117,13 @@ func JWTTokenCheck(c *gin.Context) error {
 		return errors.New("请求头中 auth 有误")
 	}
 	token, err := ParseToken(parts[1])
+	//log.Printf("model-JWTTokenCheck:parts[1]:%v", parts[1])
 	if err != nil {
+		log.Printf("model-JWTTokenCheck:err:%v", err)
 		c.Set("redirect_url", "/authorization")
 		c.Redirect(http.StatusFound, "/signin")
 		return errors.New("token 验证失败")
 	}
-	c.Set("username", token.Username)
+	c.Set("user_id", token.UserId)
 	return nil
 }

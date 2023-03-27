@@ -74,4 +74,6 @@ func InitDB() {
 	// 自动建表
 	DB.AutoMigrate(&User{})
 	DB.AutoMigrate(&AuthorizationCode{})
+	DB.AutoMigrate(&AccessToken{})
+	DB.AutoMigrate(&Client{})
 }

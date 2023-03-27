@@ -110,7 +110,7 @@ func SignUp(c *gin.Context) {
 		IsVerified:        0,
 		VeriTokenExpireAt: time.Now().Add(time.Minute * 15).Unix(),
 	}
-	model.CreateUser(&newUser)
+	id := model.CreateUser(&newUser)
 	// 发送激活邮件
 	err = SendEmail(newUser, veriSecret)
 	if err != nil {
@@ -120,7 +120,7 @@ func SignUp(c *gin.Context) {
 		})
 	}
 	// 生成 token
-	token, err := auth.GenToken(name)
+	token, err := auth.GenToken(id)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
@@ -140,7 +140,7 @@ func SignUp(c *gin.Context) {
 
 // SignIn 登录
 func SignIn(c *gin.Context) {
-	fmt.Println("in signin")
+	//fmt.Println("in signin")
 	rawId := c.PostForm("id")
 	password := c.PostForm("password")
 	// 检索用户用户名/密码
@@ -149,7 +149,7 @@ func SignIn(c *gin.Context) {
 	//fmt.Printf("before search:%v\n", retUser)
 
 	model.CheckId(rawId, &retUser)
-	fmt.Printf("after search:%v\n", retUser)
+	//fmt.Printf("after search:%v\n", retUser)
 	// 检索用户用户名/密码 - 没有检索到
 	if retUser.ID == 0 {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -169,7 +169,6 @@ func SignIn(c *gin.Context) {
 		return
 	}
 	// 检验是否激活
-	// 更新邮箱激活状态
 	if model.CheckUserVerified(&retUser) != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
@@ -178,7 +177,7 @@ func SignIn(c *gin.Context) {
 		return
 	}
 	// 生成 token
-	token, err := auth.GenToken(rawId)
+	token, err := auth.GenToken(retUser.ID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
@@ -186,7 +185,8 @@ func SignIn(c *gin.Context) {
 		})
 		return
 	}
-	// 返回token和ID
+	// 返回token和ID；更新 token
+
 	c.JSON(http.StatusOK, gin.H{
 		"code":    200,
 		"message": "登录成功",
@@ -235,7 +235,7 @@ func Update(c *gin.Context) {
 	model.UpdateInfo(&user, username, nickname, description, string(encryptedPassword))
 	//if err != nil {
 	c.JSON(http.StatusOK, gin.H{
-		"code":    "5555",
+		"code":    5555,
 		"message": "更新信息成功",
 	})
 }

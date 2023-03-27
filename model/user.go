@@ -8,8 +8,10 @@ import (
 )
 
 // CreateUser 插入用户
-func CreateUser(u *User) {
+func CreateUser(u *User) uint {
 	DB.Create(&u)
+	//fmt.Printf("in CreateUser:id : %v\n", u.ID)
+	return u.ID
 }
 
 // CheckEmail 检查邮箱唯一性
@@ -25,14 +27,14 @@ func CheckId(id string, u *User) {
 	fmt.Printf("## in CheckId,id:%v\n", id)
 	if regMail.MatchString(id) {
 		// id 是邮箱
-		fmt.Println("## checking email")
+		//fmt.Println("## checking email")
 		DB.Where("email = ?", id).Find(u)
-		fmt.Printf("## after check mail %v\n", u)
+		//fmt.Printf("## after check mail %v\n", u)
 	} else {
 		// id 是用户名
-		fmt.Println("## checking username")
+		//fmt.Println("## checking username")
 		DB.Where("user_name = ?", id).Find(u)
-		fmt.Printf("## after check username %v\n", u)
+		//fmt.Printf("## after check username %v\n", u)
 
 		//fmt.Println(retUser)
 	}
@@ -42,6 +44,11 @@ func CheckId(id string, u *User) {
 func UpdateInfo(u *User, username, nickname, description, password string) {
 	DB.Model(&u).Select("UserName", "NickName", "Description", "Password").Updates(User{UserName: username, NickName: nickname, Description: description, Password: password})
 }
+
+//// UpdateToken 更新登录 token
+//func UpdateToken(tk string, id string) {
+//	DB.Where("id = ?", id).Update("token")
+//}
 
 // CheckVeri 检测激活链接是否有效- 有效则成功验证；过期删除；无效报错
 func CheckVeri(user *User) error {

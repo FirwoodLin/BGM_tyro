@@ -104,7 +104,7 @@ password:
 成功 - 重定向到如下链接
 
 ```json
-redirectUri+"?code="+authCode+"?state="+state
+redirectUri+"?code="+authCode+"&state="+state
 ```
 
 ## 使用 code 兑换 access token 和 refresh token  - POST

@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"log"
 	"strings"
 	"time"
 )
@@ -11,20 +12,26 @@ func CheckScope(clientId, scope, redirectUri string) error {
 	var client AuthorizationCode
 	// 检查 client 是否注册
 	if err := DB.Where("client_id = ?", clientId).Find(&client).Error; err != nil {
+		log.Printf("model-CheckScope:client not found\n")
 		return errors.New("client not found")
 	}
 	// 检查 scope 是否已经授权
 	var authedScopeMap map[string]int
+	authedScopeMap = make(map[string]int)
 	for _, v := range strings.Split(client.Scope, ",") {
 		authedScopeMap[v] = 1
 	}
 	for _, v := range strings.Split(scope, ",") {
 		if authedScopeMap[v] != 1 {
+			log.Printf("model-CheckScope:unauthed scope\n")
+			log.Printf("scope-diff:db:%v;passin:%v", authedScopeMap, scope)
 			return errors.New("unauthed scope")
 		}
 	}
 	// 检查 redirect_uri 是否一致
 	if client.RedirectUri != redirectUri {
+		log.Printf("model-CheckScope:重定向 Uri 与注册不一致\n")
+		log.Printf("uri-diff:db:%v;passin:%v", client.RedirectUri, redirectUri)
 		return errors.New("重定向 Uri 与注册不一致")
 	}
 	return nil
@@ -66,6 +73,7 @@ func CheckSecret(id, secret, uri string) error {
 		return err
 	}
 	if client.ClientSecret != secret {
+		log.Printf("model-CheckSecret:秘钥不匹配DB:%v,Client:%v", client.ClientSecret, secret)
 		return errors.New("client id 与 secret不匹配")
 	}
 	var authCode AuthorizationCode

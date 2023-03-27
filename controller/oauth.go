@@ -3,10 +3,12 @@ package controller
 import (
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
 	"github.com/gin-gonic/gin"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -35,6 +37,7 @@ func OauthAuthCode(c *gin.Context) {
 	state := c.Query("state")
 	// 如果没有 token/token 过期/无效，重定向进行登录
 	if err := auth.JWTTokenCheck(c); err != nil {
+		log.Printf("controller-OauthAuthCode重定向到登录页:%v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "请登陆后进行操作，重定向...",
@@ -44,9 +47,10 @@ func OauthAuthCode(c *gin.Context) {
 	}
 	// 检查 clientId 和先前注册的 scope、redirect_url 是否匹配
 	if err := model.CheckScope(clientId, scope, redirectUri); err != nil {
+		log.Printf("controller-OauthAuthCode:%v\n", err)
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
-			"message": err,
+			"message": "scope-redirect_url不匹配",
 		})
 	}
 	// 生成授权码
@@ -75,10 +79,11 @@ func OauthAuthCode(c *gin.Context) {
 		return
 	}
 	// 返回授权码
-	c.Redirect(http.StatusFound, redirectUri+"?code="+authCode+"?state="+state)
+	log.Printf("controller-OauthAuthCode:重定向：%s", fmt.Sprintf(redirectUri+"?code="+authCode+"&state="+state))
+	c.Redirect(http.StatusFound, redirectUri+"?code="+authCode+"&state="+state)
 }
 
-// OauthToken 根据 code 返回 access token 和 refresh token；或者刷新token
+// OauthToken 根据请求类型code 或者 refresh，返回 access token 和 refresh token；或者刷新token
 func OauthToken(c *gin.Context) {
 	grantType := c.PostForm("grant_type")
 	// 检查 grant_type
@@ -135,6 +140,7 @@ func OauthTokenAuthCode(c *gin.Context) {
 			"code":    5555,
 			"message": "Client 信息错误",
 		})
+		c.Abort()
 		return
 	}
 	// 生成 refresh token
