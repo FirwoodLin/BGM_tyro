@@ -10,7 +10,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 )
 
@@ -25,10 +24,13 @@ func OauthAuthCode(c *gin.Context) {
 	responseType := c.Query("response_type")
 	// 非授权码模式，报错
 	if responseType != "code" {
+		log.Printf("controller-OauthAuthCode:responseTypeErr:%v", responseType)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "目前不支持的授权方式",
 		})
+		c.Abort()
+		return
 	}
 	// 解析其他参数
 	clientId := c.Query("client_id")
@@ -42,6 +44,7 @@ func OauthAuthCode(c *gin.Context) {
 			"code":    5555,
 			"message": "请登陆后进行操作，重定向...",
 		})
+		// TODO:重定向至“登录页”-登录页在哪
 		c.Redirect(http.StatusFound, "/signin")
 		return
 	}
@@ -52,6 +55,8 @@ func OauthAuthCode(c *gin.Context) {
 			"code":    5555,
 			"message": "scope-redirect_url不匹配",
 		})
+		c.Abort()
+		return
 	}
 	// 生成授权码
 	byteAuthCode := make([]byte, 32)
@@ -65,17 +70,19 @@ func OauthAuthCode(c *gin.Context) {
 	authCode := base64.URLEncoding.EncodeToString(byteAuthCode)
 	// 存储授权码
 	var authCodeStruct = model.AuthorizationCode{
-		ClientId:    clientId,
-		RedirectUri: redirectUri,
-		Scope:       scope,
-		Code:        authCode,
-		ExpireAt:    time.Now().Add(time.Minute * 10).Unix(),
+		ClientId: clientId,
+		//RedirectUri: redirectUri,
+		Scope: scope,
+		Code:  authCode,
+		// TODO:将有效期统一成全局变量
+		ExpireAt: time.Now().Add(time.Minute * 10).Unix(),
 	}
 	if err := model.UpdateAuthCode(&authCodeStruct); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
 			"message": "存储授权码失败",
 		})
+		c.Abort()
 		return
 	}
 	// 返回授权码
@@ -94,65 +101,86 @@ func OauthToken(c *gin.Context) {
 		OauthTokenRefresh(c)
 	default:
 		// 无效类型进行报错
+		log.Printf("#ERR#controller-OauthToken:授权类型无效:%v", grantType)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
 			"message": "grant_type 错误",
 		})
+		c.Abort()
 	}
 }
 
-// OauthTokenAuthCode 授权码模式颁发 token
+// OauthTokenAuthCode 授权码模式,根据 code 颁发 token
 func OauthTokenAuthCode(c *gin.Context) {
 	code := c.PostForm("code")
-	redirectUri := c.PostForm("redirect_uri")
-	// 检查 code 是否使用过、是否过期
-	if err := model.CheckCode(code); err != nil {
+	clientId := c.PostForm("client_id")
+	// 检查 code 是否存在、未使用过、未过期
+	if err := model.CheckCode(clientId, code); err != nil {
+		log.Printf("#ERR#controller-OauthTokenAuthCode:code错误 %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
-			"message": err,
-		})
-	}
-	// 检查 client id 是否注册、与 code 是否一致;检查 redirect_uri
-	authHeader := c.Request.Header.Get("Authorization")
-	authList := strings.SplitN(authHeader, " ", 2)
-	if strings.ToLower(authList[0]) != "bearer" {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    5555,
-			"message": "header 鉴权类型错误",
-		})
-		return
-	}
-	clientCreds, err := base64.StdEncoding.DecodeString(authList[1])
-	if err != nil {
-		// 解码失败，返回错误响应
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    5555,
-			"message": "header中不包含有效鉴权信息",
-		})
-		return
-	}
-	creds := strings.Split(string(clientCreds), ":")
-	clientID := creds[0]
-	clientSecret := creds[1]
-	err = model.CheckSecret(clientID, clientSecret, redirectUri)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"code":    5555,
-			"message": "Client 信息错误",
+			"message": fmt.Sprintf("%v", err),
 		})
 		c.Abort()
 		return
 	}
-	// 生成 refresh token
+	// 检查 client secret 是否正确,检查 redirect_uri
+	clientSecret := c.PostForm("client_secret")
+	redirectUri := c.PostForm("redirect_uri")
+	if err := model.CheckSecret(clientId, clientSecret, redirectUri); err != nil {
+		log.Printf("#ERR#controller-OauthTokenAuthCode:客户端检验错误 %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    5555,
+			"message": fmt.Sprintf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+	// 验证策略更新-不使用 HTTP Auth，而是使用 body 传递 id 和 secret
+	//authHeader := c.Request.Header.Get("Authorization")
+	//authList := strings.SplitN(authHeader, " ", 2)
+	//if strings.ToLower(authList[0]) != "basic" {
+	//	c.JSON(http.StatusBadRequest, gin.H{
+	//		"code":    5555,
+	//		"message": "header 鉴权类型错误",
+	//	})
+	//	return
+	//}
+	//clientCreds, err := base64.StdEncoding.DecodeString(authList[1])
+	//if err != nil {
+	//	// 解码失败，返回错误响应
+	//	c.JSON(http.StatusBadRequest, gin.H{
+	//		"code":    5555,
+	//		"message": "header中不包含有效鉴权信息",
+	//	})
+	//	c.Abort()
+	//	return
+	//}
+	//creds := strings.Split(string(clientCreds), ":")
+	//clientID := creds[0]
+	//clientSecret := creds[1]
+	//err = model.CheckSecret(clientID, clientSecret, redirectUri)
+	//if err != nil {
+	//	c.JSON(http.StatusBadRequest, gin.H{
+	//		"code":    5555,
+	//		"message": "Client 信息错误",
+	//	})
+	//	c.Abort()
+	//	return
+	//}
+
+	// 生成 refresh token，并编码
 	byteRefreshToken := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, byteRefreshToken); err != nil {
 		c.JSON(http.StatusOK, gin.H{
 			"code":    5555,
 			"message": "refresh 生成错误",
 		})
+		c.Abort()
+		return
 	}
 	refreshToken := base64.URLEncoding.EncodeToString(byteRefreshToken)
-	// 生成 access token
+	// 生成 access token，并编码
 	byteAccessToken := make([]byte, 32)
 	if _, err := io.ReadFull(rand.Reader, byteAccessToken); err != nil {
 		c.JSON(http.StatusOK, gin.H{
@@ -164,10 +192,11 @@ func OauthTokenAuthCode(c *gin.Context) {
 	accessToken := base64.URLEncoding.EncodeToString(byteAccessToken)
 	// 持久化
 	var accessTokenStruct = model.AccessToken{
-		AccessToken:     accessToken,
-		RefreshToken:    refreshToken,
-		ClientId:        clientID,
-		RedirectUri:     redirectUri,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ClientId:     clientId,
+		//RedirectUri:     redirectUri,
+		// TODO:有效期统一存储
 		AccessExpireAt:  time.Now().Add(time.Hour * 2).Unix(),
 		RefreshExpireAt: time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
@@ -179,7 +208,7 @@ func OauthTokenAuthCode(c *gin.Context) {
 		return
 	}
 	// 查询授权范围
-	scope, err := model.GetScope(clientID)
+	scope, err := model.GetScope(clientId)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
@@ -189,16 +218,74 @@ func OauthTokenAuthCode(c *gin.Context) {
 	}
 	// 返回
 	c.JSON(http.StatusOK, gin.H{
-		"access_token":  accessToken,
 		"token_type":    "bearer",
-		"expires_at":    time.Now().Add(time.Hour).Unix(),
-		"refresh_token": refreshToken,
 		"scope":         scope,
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+		"expires_at":    time.Now().Add(time.Hour).Unix(),
 	})
 	return
 }
 
-// OauthTokenRefresh 根据 refresh token 颁发新 access token
+// OauthTokenRefresh 根据 refresh token 颁发 access token
 func OauthTokenRefresh(c *gin.Context) {
-	// TODO:完成令牌的刷新
+	refresh := c.PostForm("refresh_token")
+	clientId := c.PostForm("client_id")
+	secret := c.PostForm("client_secret")
+	// 检查 refresh 是否存在、未过期
+	if err := model.CheckRefresh(clientId, secret, refresh); err != nil {
+		log.Printf("#ERR#controller-OauthTokenRefresh:refresh token错误 %v", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code":    5555,
+			"message": fmt.Sprintf("%v", err),
+		})
+		c.Abort()
+		return
+	}
+	// 更新 refresh 和 access token
+	// 生成 refresh token，并编码 ### 决定不更新 Refresh Token
+	//byteRefreshToken := make([]byte, 32)
+	//if _, err := io.ReadFull(rand.Reader, byteRefreshToken); err != nil {
+	//	c.JSON(http.StatusOK, gin.H{
+	//		"code":    5555,
+	//		"message": "refresh 生成错误",
+	//	})
+	//	c.Abort()
+	//	return
+	//}
+	//refreshToken := base64.URLEncoding.EncodeToString(byteRefreshToken)
+	// 生成 access token，并编码
+	byteAccessToken := make([]byte, 32)
+	if _, err := io.ReadFull(rand.Reader, byteAccessToken); err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"code":    5555,
+			"message": "access 生成错误",
+		})
+		return
+	}
+	accessToken := base64.URLEncoding.EncodeToString(byteAccessToken)
+	// 持久化更新
+	accessExpireAt := time.Now().Add(time.Hour * 2).Unix()
+	var tokenStruct = model.AccessToken{
+		ClientId:    clientId,
+		AccessToken: accessToken,
+		//RefreshToken:   refreshToken,
+		AccessExpireAt: accessExpireAt,
+	}
+	if err := model.UpdateToken(&tokenStruct); err != nil {
+		log.Printf("controller-OauthTokenRefresh:%v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"code":    5555,
+			"message": fmt.Sprintf("更新access token出错：%v", err),
+		})
+		c.Abort()
+		return
+	}
+	// 成功生成 返回
+	c.JSON(http.StatusOK, gin.H{
+		//"code":5555,
+		//"message":"成"
+		"accessToken": accessToken,
+		"expireAt":    accessExpireAt,
+	})
 }

@@ -9,15 +9,14 @@ import (
 
 // CheckScope 检验 clientId 和 scope 范围是否匹配
 func CheckScope(clientId, scope, redirectUri string) error {
-	var client AuthorizationCode
+	var client Client
 	// 检查 client 是否注册
 	if err := DB.Where("client_id = ?", clientId).Find(&client).Error; err != nil {
 		log.Printf("model-CheckScope:client not found\n")
 		return errors.New("client not found")
 	}
 	// 检查 scope 是否已经授权
-	var authedScopeMap map[string]int
-	authedScopeMap = make(map[string]int)
+	var authedScopeMap = make(map[string]int)
 	for _, v := range strings.Split(client.Scope, ",") {
 		authedScopeMap[v] = 1
 	}
@@ -34,6 +33,7 @@ func CheckScope(clientId, scope, redirectUri string) error {
 		log.Printf("uri-diff:db:%v;passin:%v", client.RedirectUri, redirectUri)
 		return errors.New("重定向 Uri 与注册不一致")
 	}
+	// 检查通过
 	return nil
 }
 
@@ -45,11 +45,15 @@ func UpdateAuthCode(authCode *AuthorizationCode) error {
 	return nil
 }
 
-// CheckCode 检验 code 是否使用过、是否过期；有效就返回 scope 和nil
-func CheckCode(code string) error {
+// CheckCode 检验 code 是否存在、未使用过、未过期
+func CheckCode(clientId, code string) error {
 	var authCode AuthorizationCode
-	if err := DB.Where(&AuthorizationCode{Code: code}).First(&authCode); err != nil {
-		return errors.New("授权码无效-不存在")
+	err := DB.Where("client_id = ?", clientId).Find(&authCode).Error
+	if err != nil {
+		return errors.New("授权码无效-客户不存在")
+	}
+	if authCode.Code != code {
+		return errors.New("授权码错误-授权码错误")
 	}
 	if authCode.IsUsed == 1 {
 		return errors.New("授权码无效-已经使用过")
@@ -69,35 +73,74 @@ func CreateToken(accessToken *AccessToken) error {
 // CheckSecret 检查 ClientSecret,redirect_uri 和 ClientId 是否一致
 func CheckSecret(id, secret, uri string) error {
 	var client Client
-	if err := DB.Where(&Client{ClientId: id}).First(&client).Error; err != nil {
+	if err := DB.Where("client_id = ?", id).First(&client).Error; err != nil {
+		log.Printf("#ERR#model-CheckSecret:客户端检索错误，%v", err)
 		return err
 	}
 	if client.ClientSecret != secret {
-		log.Printf("model-CheckSecret:秘钥不匹配DB:%v,Client:%v", client.ClientSecret, secret)
-		return errors.New("client id 与 secret不匹配")
+		log.Printf("model-CheckSecret:秘钥错误DB:%v,Client:%v", client.ClientSecret, secret)
+		return errors.New("client id 与 secret 不匹配")
 	}
-	var authCode AuthorizationCode
-	if err := DB.Where(&AuthorizationCode{ClientId: id}).First(&authCode).Error; err != nil {
-		return errors.New("client id 未授权")
+	if client.RedirectUri != uri {
+		log.Printf("model-CheckSecret:uri DB:%v,Client:%v", client.RedirectUri, uri)
+		return errors.New("uri 不匹配")
 	}
-	if authCode.RedirectUri != uri {
-		return errors.New("RedirectUri 错误")
+	//var authCode AuthorizationCode
+	//if err := DB.Where(&AuthorizationCode{ClientId: id}).First(&authCode).Error; err != nil {
+	//	return errors.New("client id 未授权")
+	//}
+	//if authCode.RedirectUri != uri {
+	//	return errors.New("RedirectUri 错误")
+	//}
+	return nil
+}
+
+// GetScope 查询 id 对应 client 的 scope
+func GetScope(id string) (string, error) {
+	var client Client
+	if err := DB.Where("client_id = ?", id).First(&client).Error; err != nil {
+		return "", err
+	}
+	return client.Scope, nil
+}
+
+// CheckRefresh 检查 refresh 是否存在、未使用过、未过期
+func CheckRefresh(id, secret, refresh string) error {
+	var client Client
+	var accessToken AccessToken
+	if err := DB.Where("client_id = ?", id).First(&client).Error; err != nil {
+		return errors.New("client_id 未找到")
+	}
+	if client.ClientSecret != secret {
+		return errors.New("secret 错误")
+	}
+	if err := DB.Where("client_id = ?", id).First(&accessToken).Error; err != nil {
+		return errors.New("access token 未找到")
+	}
+	if accessToken.ClientId != id {
+		return errors.New("client_id 与 token 不匹配")
+	}
+	if accessToken.RefreshToken != refresh {
+		return errors.New("refresh token 错误")
+	}
+	if accessToken.RefreshExpireAt < time.Now().Unix() {
+		return errors.New("refresh token 已经过期")
 	}
 	return nil
 }
 
-// GetScope 查询 code 对应的 scope
-func GetScope(id string) (string, error) {
-	var authCode AuthorizationCode
-	if err := DB.Where(&AuthorizationCode{ClientId: id}).First(&authCode).Error; err != nil {
-		return "", err
+// UpdateToken 更新 access 和 有效期
+func UpdateToken(tokenStruct *AccessToken) error {
+	if err := DB.
+		Model(&AccessToken{}).
+		Where("client_id = ?", tokenStruct.ClientId).
+		Select("access_token", "access_expire_at").
+		Updates(*tokenStruct).
+		Error; err != nil {
+		return err
 	}
-	return authCode.Scope, nil
+	return nil
 }
-
-//func UpdateVeri() {
-//
-//}
 
 // UpdateClient 更新 client 的过期时间、code
 //func UpdateClient(clientId, scope string) error {

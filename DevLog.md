@@ -158,6 +158,22 @@
         -   依据 code 和 clientID 存储到 access token 表
         -   依据 refresh token 和 id 更新到 access token
 
+# 0328 Day n+3
+
+将Code、Token、Client的表重新设计。
+
+重新设计颁发 Access Token 的流程。
+
+# 0329 Dayn+4
+
+使用 Refresh Token 进行换发 Access Token，在此过程中不更新 Refresh Token 及其有效期。
+
+## TODO
+
+-   Authorization Code 被二度利用时，撤销先前的授权
+
+
+
 
 # 开发计划
 
