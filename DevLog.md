@@ -171,9 +171,81 @@
 ## TODO
 
 -   Authorization Code 被二度利用时，撤销先前的授权
+-   Client 的注册
+-   第四阶段 - OIDC 服务逻辑梳理。完成 提供ID Token 的功能。
+-   了解OIDC和OAuth2.0区别
 
+# 0331 Dayn+6
 
+突然发现可以使用 gin 提供的 JWT 中间件
 
+```
+范围参数必须以 openid 值开头，然后包含 profile 值和/或 email 值。
+如果存在 profile 范围值，则 ID 令牌可能包含（但不保证）包含用户的默认 profile 声明。
+如果存在 email 范围值，则 ID 令牌包含 email 和 email_verified 声明。
+
+一起在 ID-token 中返回
+```
+
+-   idtoken JWT 使用 RS256 加密，公钥通过接口暴露；对比：登录token 使用 HS256 进行对称加密
+
+# 0401 Day n+7
+
+-   ~~每个 user 的 client ID 是不同的~~
+
+# 0404
+
+1.25h
+
+-   其实是根据 header 中的 token 确定用户身份
+-   jwt 解析时，需要验证 jwt 的 user 和 body 中的 user 相同
+-   Oauth 中 根据 header 中的 token 确定用户身份
+
+## 学习的资料
+
+细节在于，“同意授权”的过程中，会将 request 发向服务器，其中会包含用户的信息
+
+>   在 (B) 裡面， Resource Owner 若同意授權，這個**「同意授權」的 request 會往 Authorization Endpoint 發送**，接著會收到 302 的轉址 response ，裡面帶有「前往 Client 的 Redirection Endpoint 的 URL」的轉址 (Location header)，從而產生「向 Redirection URI 發送 GET Request」的操作。
+
+微博对于Oauth2.0过程中产生的错误的定义（部分）[授权机制说明](https://open.weibo.com/wiki/授权机制说明)
+
+| 错误码(error)  | 错误编号(error_code) | 错误描述(error_description)      |
+| :------------- | :------------------- | :------------------------------- |
+| invalid_client | 21324                | client_id或client_secret参数无效 |
+| expired_token  | 21327                | token过期                        |
+
+-   QQ 的文档[QQ互联](https://wiki.connect.qq.com/使用authorization_code获取access_token)：客户端注意需要将url进行URLEncode；refresh_token仅一次有效；
+
+例子：花瓣网点击微博登录，跳转到
+
+```
+(已经 url 解码)
+https://api.weibo.com/oauth2/authorize
+?client_id=2499394483
+&response_type=code
+&redirect_uri=https://huaban.com/oauth/callback/&display=default
+// 没有登录微博时
+https://api.weibo.com/oauth2/authorize
+?client_id=2499394483
+&response_type=code
+&redirect_uri=https%3A%2F%2Fhuaban.com%2Foauth%2Fcallback%2F
+&display=default###
+```
+
+# 0405
+
+回看 auth code 的请求，是要在 header 中带有 bearer token 的信息的
+
+不管是前端是怎么获取的吧，默认会提供 auth 信息。存储 auth code 和 access token 的时候，将 user_id 作为主键
+
+## 计划
+
+重定向链接需要进行 url 编码
+
+## 记录
+
+-   [debug]JWT验证后`c.Set("user_id")`为字符串类型，但表单中是 uint 类型，二者无法比较相等
+-   [feat]
 
 # 开发计划
 

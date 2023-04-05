@@ -7,7 +7,6 @@ import (
 )
 
 func NewRouter(r *gin.Engine) {
-	// ### 分离版
 	// 注册
 	r.POST("/signup", controller.SignUp)
 	// 登录
@@ -19,10 +18,15 @@ func NewRouter(r *gin.Engine) {
 	// OAuth2.0 接口
 	oauth := r.Group("/oauth")
 	{
+		oauth.POST("/client", controller.OauthSignup)
 		//oauth.POST("/signup", controller.OauthSignup)
 		oauth.GET("/authorization", controller.OauthAuthCode)
 		oauth.POST("/token", controller.OauthToken)
 
 	}
+	//oidc := r.Group("/oidc")
+	//{
+	//	oidc.GET()
+	//}
 	r.Run(":8080")
 }

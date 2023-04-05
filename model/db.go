@@ -9,6 +9,7 @@ import (
 
 var DB *gorm.DB
 
+// User 主站的用户信息
 type User struct {
 	gorm.Model
 	UserName          string `gorm:"varchar(32);not null;comment:用户名" json:"name" validate:"required,max=32"`
@@ -21,15 +22,23 @@ type User struct {
 	VeriTokenExpireAt int64  `gorm:"BIGINT;not null;comment:token过期时间" json:"veriTokenExpireAt"`
 	IsVerified        int    `gorm:"tinyint;default:0;comment:账户是否激活" json:"isVerified"`
 }
+
+// Client 注册的客户端信息
 type Client struct {
 	gorm.Model
 	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
 	ClientSecret string `gorm:"varchar(128);not null;comment:客户端密码" json:"clientSecret"`
 	RedirectUri  string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
+	ClientName   string `gorm:"varchar(64);not null;comment:Client 的名称"`
+	Avatar       string `gorm:"varchar(64);not null;comment:Client 的图标" validate:"uri"`
 	Scope        string `gorm:"varchar(128);not null;comment:权限元组" json:"scope"`
 }
+
+// AuthorizationCode 授权码
 type AuthorizationCode struct {
+	// 在 model 中存储用户的 ID
 	gorm.Model
+	UserId   uint
 	ClientId string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
 	Code     string `gorm:"varchar(32);not null;comment:授权码" json:"code"`
 	Scope    string `gorm:"varchar(128);not null;comment:用户同意的权限元组" json:"scope"`
@@ -38,6 +47,8 @@ type AuthorizationCode struct {
 	//AccessToken  string    `gorm:"varchar(128);not null;comment:授权码" json:"AccessToken"`
 	//RefreshToken string    `gorm:"varchar(128);not null;comment:授权码" json:"refreshToken"`
 }
+
+// AccessToken 颁发的 access 和 refresh token
 type AccessToken struct {
 	gorm.Model
 	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
@@ -46,6 +57,22 @@ type AccessToken struct {
 	//RedirectUri     string `gorm:"varchar(128);not null;comment:重定向Uri" json:"redirectUri"`
 	AccessExpireAt  int64 `gorm:"int;not null;comment:token过期时间" json:"expireAt"`
 	RefreshExpireAt int64 `gorm:"int;not null;comment:token过期时间" json:"refreshExpireAt"`
+}
+
+// AnimeInfo 番剧相关信息
+type AnimeInfo struct {
+	gorm.Model
+	Name     string `gorm:"varchar(128);not null;comment:番剧名" json:"name"`
+	Episodes int    `gorm:"int;not null;comment:番剧话数" json:"episodes"`
+	Director string `gorm:"varchar(64);not null;comment:导演名字" json:"director"`
+}
+
+// AnimeCollection 用户对收藏的番剧的个性化信息
+type AnimeCollection struct {
+	gorm.Model
+	UserId  uint   `gorm:"int;not null;comment:用户ID" json:"userId"`
+	Rating  int    `gorm:"int;not null;comment:评分" json:"rating"`
+	Comment string `gorm:"varchar(128);comment:用户吐槽" json:"comment"`
 }
 
 // InitDB 初始化连接并自动迁移

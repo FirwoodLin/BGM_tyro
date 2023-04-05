@@ -13,10 +13,11 @@ import (
 	"time"
 )
 
-// TODO: client 注冊
-// func OauthSignup(c *gin.Context) {
-//
-// }
+// OauthSignup TODO: client 注冊
+// OauthSignup 客户端注册
+func OauthSignup(c *gin.Context) {
+
+}
 
 // OauthAuthCode 生成 authorization code
 func OauthAuthCode(c *gin.Context) {
@@ -216,13 +217,24 @@ func OauthTokenAuthCode(c *gin.Context) {
 		})
 		return
 	}
-	// 返回
+	// 如果请求 id token，进行生成，并返回
+	//TODO
+	//if strings.Contains(scope, "openid") {
+	//	idToken, err := OidcGenIdToken(scope, clientId)
+	//	if err != nil {
+	//
+	//	} else {
+	//
+	//	}
+	//}
+	// 返回普通请求
 	c.JSON(http.StatusOK, gin.H{
 		"token_type":    "bearer",
 		"scope":         scope,
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
-		"expires_at":    time.Now().Add(time.Hour).Unix(),
+		//"id_token":idToken,
+		"expires_at": time.Now().Add(time.Hour).Unix(),
 	})
 	return
 }
@@ -283,8 +295,8 @@ func OauthTokenRefresh(c *gin.Context) {
 	}
 	// 成功生成 返回
 	c.JSON(http.StatusOK, gin.H{
-		//"code":5555,
-		//"message":"成"
+		"code":        5555,
+		"message":     "成功生成",
 		"accessToken": accessToken,
 		"expireAt":    accessExpireAt,
 	})

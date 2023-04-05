@@ -3,13 +3,13 @@ package controller
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"github.com/FirwoodLin/BGM_tyro/auth"
 	"github.com/FirwoodLin/BGM_tyro/model"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 	"io"
+	"log"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -198,12 +198,14 @@ func SignIn(c *gin.Context) {
 
 // Update 更新用户数据
 func Update(c *gin.Context) {
-	username := c.PostForm("username")
-	if tokenUserName, ok := c.Get("username"); !ok || username != tokenUserName {
-		fmt.Printf("two username:%v-%v\n", tokenUserName, username)
+	userId, _ := strconv.Atoi(c.PostForm("id"))
+	if tokenUserId, ok := c.Get("user_id"); !ok || uint(userId) != tokenUserId {
+		log.Printf("controller-Update:tokenUserId-reqUserId:%v-%v", tokenUserId, uint(userId))
+		//fmt.Printf("two userId:%v-%v\n", tokenUserId, userId)
+		log.Printf("controller-Update:ok:%v;%T;%T", ok, uint(userId), tokenUserId)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
-			"message": "token 用户名与请求用户名不一致",
+			"message": "token 用户 ID 与请求 用户ID 不一致",
 		})
 		c.Abort()
 		return
@@ -213,6 +215,7 @@ func Update(c *gin.Context) {
 	password := c.PostForm("password")
 	nickname := c.PostForm("nickname")
 	description := c.PostForm("description")
+	username := c.PostForm("username")
 	var user model.User
 	id, _ := strconv.Atoi(rawid)
 	user.ID = uint(id)

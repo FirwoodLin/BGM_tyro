@@ -1,11 +1,3 @@
-<!--
- * @Description: 
- * @version: 
- * @Author: Fir
- * @Date: 2023-03-11 15:23:59
- * @LastEditors: Fir
- * @LastEditTime: 2023-03-11 15:26:18
--->
 # BGM_tyro
 
 <!-- Init Push.Test link to GitHub. -->
