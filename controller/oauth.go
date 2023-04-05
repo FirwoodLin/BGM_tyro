@@ -39,6 +39,7 @@ func OauthAuthCode(c *gin.Context) {
 	scope := c.Query("scope")
 	state := c.Query("state")
 	// 如果没有 token/token 过期/无效，重定向进行登录
+	// TODO:改为中间件验证token，并使用 c.set 设置 userid
 	if err := auth.JWTTokenCheck(c); err != nil {
 		log.Printf("controller-OauthAuthCode重定向到登录页:%v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -68,9 +69,12 @@ func OauthAuthCode(c *gin.Context) {
 		})
 		return
 	}
+	// 应该在 JWT 鉴权后获取 user_id
+	userId, _ := c.Get("user_id")
 	authCode := base64.URLEncoding.EncodeToString(byteAuthCode)
 	// 存储授权码
 	var authCodeStruct = model.AuthorizationCode{
+		UserId:   userId.(uint),
 		ClientId: clientId,
 		//RedirectUri: redirectUri,
 		Scope: scope,
@@ -78,6 +82,7 @@ func OauthAuthCode(c *gin.Context) {
 		// TODO:将有效期统一成全局变量
 		ExpireAt: time.Now().Add(time.Minute * 10).Unix(),
 	}
+	log.Printf("controller-OauthAuthCode:authCodeStruct-%v", authCodeStruct)
 	if err := model.UpdateAuthCode(&authCodeStruct); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"code":    5555,
@@ -116,7 +121,11 @@ func OauthTokenAuthCode(c *gin.Context) {
 	code := c.PostForm("code")
 	clientId := c.PostForm("client_id")
 	// 检查 code 是否存在、未使用过、未过期
-	if err := model.CheckCode(clientId, code); err != nil {
+	var authCodeStruct = model.AuthorizationCode{
+		Code:     code,
+		ClientId: clientId,
+	}
+	if err := model.CheckCode(&authCodeStruct); err != nil {
 		log.Printf("#ERR#controller-OauthTokenAuthCode:code错误 %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
@@ -137,38 +146,6 @@ func OauthTokenAuthCode(c *gin.Context) {
 		c.Abort()
 		return
 	}
-	// 验证策略更新-不使用 HTTP Auth，而是使用 body 传递 id 和 secret
-	//authHeader := c.Request.Header.Get("Authorization")
-	//authList := strings.SplitN(authHeader, " ", 2)
-	//if strings.ToLower(authList[0]) != "basic" {
-	//	c.JSON(http.StatusBadRequest, gin.H{
-	//		"code":    5555,
-	//		"message": "header 鉴权类型错误",
-	//	})
-	//	return
-	//}
-	//clientCreds, err := base64.StdEncoding.DecodeString(authList[1])
-	//if err != nil {
-	//	// 解码失败，返回错误响应
-	//	c.JSON(http.StatusBadRequest, gin.H{
-	//		"code":    5555,
-	//		"message": "header中不包含有效鉴权信息",
-	//	})
-	//	c.Abort()
-	//	return
-	//}
-	//creds := strings.Split(string(clientCreds), ":")
-	//clientID := creds[0]
-	//clientSecret := creds[1]
-	//err = model.CheckSecret(clientID, clientSecret, redirectUri)
-	//if err != nil {
-	//	c.JSON(http.StatusBadRequest, gin.H{
-	//		"code":    5555,
-	//		"message": "Client 信息错误",
-	//	})
-	//	c.Abort()
-	//	return
-	//}
 
 	// 生成 refresh token，并编码
 	byteRefreshToken := make([]byte, 32)
@@ -193,11 +170,12 @@ func OauthTokenAuthCode(c *gin.Context) {
 	accessToken := base64.URLEncoding.EncodeToString(byteAccessToken)
 	// 持久化
 	var accessTokenStruct = model.AccessToken{
+		UserId:       authCodeStruct.UserId,
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		ClientId:     clientId,
 		//RedirectUri:     redirectUri,
-		// TODO:有效期统一存储
+		// TODO:有效期存储到配置文件中
 		AccessExpireAt:  time.Now().Add(time.Hour * 2).Unix(),
 		RefreshExpireAt: time.Now().Add(time.Hour * 24 * 7).Unix(),
 	}
@@ -217,7 +195,7 @@ func OauthTokenAuthCode(c *gin.Context) {
 		})
 		return
 	}
-	// 如果请求 id token，进行生成，并返回
+	// OIDC : 如果请求 id token，进行生成，并返回
 	//TODO
 	//if strings.Contains(scope, "openid") {
 	//	idToken, err := OidcGenIdToken(scope, clientId)
@@ -244,8 +222,12 @@ func OauthTokenRefresh(c *gin.Context) {
 	refresh := c.PostForm("refresh_token")
 	clientId := c.PostForm("client_id")
 	secret := c.PostForm("client_secret")
+	var accessTokenStruct = model.AccessToken{
+		RefreshToken: refresh,
+		ClientId:     clientId,
+	}
 	// 检查 refresh 是否存在、未过期
-	if err := model.CheckRefresh(clientId, secret, refresh); err != nil {
+	if err := model.CheckRefresh(&accessTokenStruct, secret); err != nil {
 		log.Printf("#ERR#controller-OauthTokenRefresh:refresh token错误 %v", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code":    5555,
@@ -279,6 +261,7 @@ func OauthTokenRefresh(c *gin.Context) {
 	// 持久化更新
 	accessExpireAt := time.Now().Add(time.Hour * 2).Unix()
 	var tokenStruct = model.AccessToken{
+		UserId:      accessTokenStruct.UserId,
 		ClientId:    clientId,
 		AccessToken: accessToken,
 		//RefreshToken:   refreshToken,

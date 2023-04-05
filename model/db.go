@@ -38,7 +38,7 @@ type Client struct {
 type AuthorizationCode struct {
 	// 在 model 中存储用户的 ID
 	gorm.Model
-	UserId   uint
+	UserId   uint   `gorm:"varchar(128);not null;comment:用户ID" json:"userId"`
 	ClientId string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
 	Code     string `gorm:"varchar(32);not null;comment:授权码" json:"code"`
 	Scope    string `gorm:"varchar(128);not null;comment:用户同意的权限元组" json:"scope"`
@@ -51,6 +51,7 @@ type AuthorizationCode struct {
 // AccessToken 颁发的 access 和 refresh token
 type AccessToken struct {
 	gorm.Model
+	UserId       uint   `gorm:"varchar(128);not null;comment:用户ID" json:"userId"`
 	ClientId     string `gorm:"varchar(128);not null;comment:客户端ID" json:"clientId"`
 	AccessToken  string `gorm:"varchar(128);not null" json:"accessToken"`
 	RefreshToken string `gorm:"varchar(128);not null" json:"refreshToken"`

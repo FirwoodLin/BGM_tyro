@@ -244,8 +244,18 @@ https://api.weibo.com/oauth2/authorize
 
 ## 记录
 
--   [debug]JWT验证后`c.Set("user_id")`为字符串类型，但表单中是 uint 类型，二者无法比较相等
--   [feat]
+-   [fix]JWT验证后`c.Set("user_id")`为字符串类型，但表单中是 uint 类型，二者无法比较相等
+-   [fix]OAuth 中，user_id 和 client_id 共同确定一条唯一的 code 和 token 
+-   ~~[fix]注册成功后，不立即颁发token，等到激活后再颁发~~TODO
+
+## 学习
+
+-   将`any`类型转化为`uint`类型：
+
+    ```go
+    uint(val)	// 错误
+    val.(uint)	// 正确
+    ```
 
 # 开发计划
 

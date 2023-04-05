@@ -46,13 +46,13 @@ func UpdateAuthCode(authCode *AuthorizationCode) error {
 }
 
 // CheckCode 检验 code 是否存在、未使用过、未过期
-func CheckCode(clientId, code string) error {
-	var authCode AuthorizationCode
-	err := DB.Where("client_id = ?", clientId).Find(&authCode).Error
+func CheckCode(authCode *AuthorizationCode) error {
+	//var authCode AuthorizationCode
+	err := DB.Where("client_id = ?", authCode.ClientId).Find(&authCode).Error
 	if err != nil {
 		return errors.New("授权码无效-客户不存在")
 	}
-	if authCode.Code != code {
+	if authCode.Code != authCode.Code {
 		return errors.New("授权码错误-授权码错误")
 	}
 	if authCode.IsUsed == 1 {
@@ -105,35 +105,37 @@ func GetScope(id string) (string, error) {
 }
 
 // CheckRefresh 检查 refresh 是否存在、未使用过、未过期
-func CheckRefresh(id, secret, refresh string) error {
+func CheckRefresh(accessTokenParam *AccessToken, secret string) error {
 	var client Client
-	var accessToken AccessToken
-	if err := DB.Where("client_id = ?", id).First(&client).Error; err != nil {
+	var accessTokenQuery AccessToken
+	if err := DB.Where("client_id = ?", accessTokenParam.ClientId).First(&client).Error; err != nil {
 		return errors.New("client_id 未找到")
 	}
 	if client.ClientSecret != secret {
 		return errors.New("secret 错误")
 	}
-	if err := DB.Where("client_id = ?", id).First(&accessToken).Error; err != nil {
-		return errors.New("access token 未找到")
+	if err := DB.Where("client_id = ?", accessTokenParam.ClientId).First(&accessTokenQuery).Error; err != nil {
+		return errors.New("accessTokenParam token 未找到")
 	}
-	if accessToken.ClientId != id {
+	if accessTokenQuery.ClientId != accessTokenParam.ClientId {
 		return errors.New("client_id 与 token 不匹配")
 	}
-	if accessToken.RefreshToken != refresh {
+	if accessTokenQuery.RefreshToken != accessTokenParam.RefreshToken {
 		return errors.New("refresh token 错误")
 	}
-	if accessToken.RefreshExpireAt < time.Now().Unix() {
+	if accessTokenQuery.RefreshExpireAt < time.Now().Unix() {
 		return errors.New("refresh token 已经过期")
 	}
+	// 将参数传递回 controller
+	accessTokenParam.UserId = accessTokenQuery.UserId
 	return nil
 }
 
-// UpdateToken 更新 access 和 有效期
+// UpdateToken 更新 access 和 有效期(根据用户的id和client_id)
 func UpdateToken(tokenStruct *AccessToken) error {
 	if err := DB.
 		Model(&AccessToken{}).
-		Where("client_id = ?", tokenStruct.ClientId).
+		Where("user_id = ? AND client_id = ?", tokenStruct.UserId, tokenStruct.ClientId).
 		Select("access_token", "access_expire_at").
 		Updates(*tokenStruct).
 		Error; err != nil {
